@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Transcription & Analysis</title>
+    <style>
+        :root {
+            --bg: #0f1117;
+            --surface: #1a1d27;
+            --surface2: #232736;
+            --border: #2e3348;
+            --text: #e4e6f0;
+            --text-dim: #8b8fa3;
+            --accent: #6c63ff;
+            --accent-hover: #5a52e0;
+            --success: #2dd4a8;
+            --error: #f87171;
+            --warning: #fbbf24;
+            --radius: 12px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ─── Header ─── */
+        .header {
+            padding: 20px 32px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+        }
+        .header .badge {
+            font-size: 11px;
+            background: var(--accent);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        /* ─── Layout ─── */
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            height: calc(100vh - 65px);
+        }
+        .panel {
+            padding: 24px;
+            overflow-y: auto;
+        }
+        .panel-left {
+            border-right: 1px solid var(--border);
+        }
+
+        /* ─── Cards ─── */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        .card-title {
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-dim);
+            margin-bottom: 14px;
+        }
+
+        /* ─── Upload Zone ─── */
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius);
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: var(--accent);
+            background: rgba(108, 99, 255, 0.05);
+        }
+        .upload-zone .icon { font-size: 36px; margin-bottom: 8px; }
+        .upload-zone p { color: var(--text-dim); font-size: 14px; }
+        .upload-zone .filename {
+            color: var(--accent);
+            font-weight: 500;
+            margin-top: 8px;
+        }
+        input[type="file"] { display: none; }
+
+        /* ─── Buttons ─── */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background: var(--accent-hover);
+        }
+        .btn-outline {
+            background: transparent;
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        .btn-outline:hover:not(:disabled) {
+            background: var(--surface2);
+        }
+        .btn-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        /* ─── Textarea ─── */
+        textarea {
+            width: 100%;
+            min-height: 160px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px;
+            color: var(--text);
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            resize: vertical;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        textarea::placeholder {
+            color: var(--text-dim);
+        }
+
+        /* ─── Select ─── */
+        select {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: var(--text);
+            font-size: 13px;
+            cursor: pointer;
+        }
+        select:focus { outline: none; border-color: var(--accent); }
+
+        /* ─── Transcript Display ─── */
+        .transcript-box {
+            background: var(--surface2);
+            border-radius: 8px;
+            padding: 16px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 14px;
+            line-height: 1.7;
+        }
+        .utterance {
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        .utterance:last-child { border-bottom: none; }
+        .speaker-label {
+            font-weight: 600;
+            color: var(--accent);
+            font-size: 12px;
+            margin-bottom: 2px;
+        }
+
+        /* ─── Analysis Results ─── */
+        .summary-box {
+            background: var(--surface2);
+            border-radius: 8px;
+            padding: 16px;
+            font-size: 14px;
+            line-height: 1.7;
+            white-space: pre-wrap;
+        }
+        .attr-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .attr-table th, .attr-table td {
+            padding: 10px 14px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        .attr-table th {
+            color: var(--text-dim);
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .attr-table td:first-child {
+            font-family: 'SF Mono', monospace;
+            color: var(--accent);
+            font-size: 12px;
+        }
+
+        /* ─── Status / Progress ─── */
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 16px;
+        }
+        .status-bar.info { background: rgba(108,99,255,0.1); color: var(--accent); }
+        .status-bar.success { background: rgba(45,212,168,0.1); color: var(--success); }
+        .status-bar.error { background: rgba(248,113,113,0.1); color: var(--error); }
+
+        .spinner {
+            width: 16px; height: 16px;
+            border: 2px solid transparent;
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ─── Stats Row ─── */
+        .stats {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        .stat {
+            background: var(--surface2);
+            padding: 10px 14px;
+            border-radius: 8px;
+            flex: 1;
+        }
+        .stat-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; }
+        .stat-value { font-size: 18px; font-weight: 600; margin-top: 4px; }
+
+        .hidden { display: none; }
+
+        /* ─── Scrollbar ─── */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Audio Transcription & Analysis</h1>
+    <span class="badge">AssemblyAI + Claude</span>
+</div>
+
+<div class="container">
+    <!-- ─── LEFT PANEL ─── -->
+    <div class="panel panel-left">
+
+        <!-- Upload -->
+        <div class="card">
+            <div class="card-title">1. Upload Audio</div>
+            <div class="upload-zone" id="uploadZone" onclick="document.getElementById('audioInput').click()">
+                <div class="icon">🎙</div>
+                <p>Drop audio file here or click to browse</p>
+                <p style="font-size:12px; margin-top:4px; color:var(--text-dim)">
+                    MP3, WAV, M4A, FLAC, OGG, WebM
+                </p>
+                <div class="filename hidden" id="selectedFile"></div>
+            </div>
+            <input type="file" id="audioInput" accept="audio/*,.mp3,.wav,.m4a,.flac,.ogg,.webm">
+            <div style="margin-top:14px">
+                <button class="btn btn-primary" id="transcribeBtn" disabled onclick="transcribe()">
+                    Transcribe Audio
+                </button>
+            </div>
+        </div>
+
+        <!-- Transcript -->
+        <div class="card hidden" id="transcriptCard">
+            <div class="card-title">Transcript</div>
+            <div class="stats" id="transcriptStats"></div>
+            <div class="transcript-box" id="transcriptBox"></div>
+        </div>
+
+        <!-- Analysis Prompt -->
+        <div class="card hidden" id="promptCard">
+            <div class="card-title">2. Analysis Prompt</div>
+            <textarea id="analysisPrompt" placeholder="Paste your analysis prompt here...
+
+Example:
+Analyze this transcript and extract the following attributes:
+- sentiment (positive/negative/neutral)
+- main_topic (1-3 words)
+- key_points (comma-separated list)
+- speaker_count (number)
+- action_items (comma-separated list)
+- urgency (low/medium/high)
+- language_quality (score 1-10)"></textarea>
+            <div style="margin-top:12px; display:flex; align-items:center; gap:12px">
+                <button class="btn btn-primary" id="analyzeBtn" onclick="analyze()">
+                    Run Analysis
+                </button>
+                <select id="modelSelect">
+                    <option value="claude-sonnet-4-5-20250929">Claude Sonnet 4.5</option>
+                    <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (faster)</option>
+                    <option value="claude-opus-4-5-20251101">Claude Opus 4.5 (best)</option>
+                </select>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ─── RIGHT PANEL ─── -->
+    <div class="panel">
+
+        <!-- Status -->
+        <div id="statusArea"></div>
+
+        <!-- Analysis Results -->
+        <div class="card hidden" id="analysisCard">
+            <div class="card-title">Analysis Results</div>
+            <div id="summarySection" class="hidden">
+                <h3 style="font-size:14px; margin-bottom:8px; font-weight:600;">Summary</h3>
+                <div class="summary-box" id="summaryBox"></div>
+            </div>
+            <div id="attrsSection" class="hidden" style="margin-top:20px">
+                <h3 style="font-size:14px; margin-bottom:8px; font-weight:600;">Extracted Attributes</h3>
+                <table class="attr-table" id="attrsTable">
+                    <thead><tr><th>Attribute</th><th>Value</th></tr></thead>
+                    <tbody id="attrsBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Exports -->
+        <div class="card hidden" id="exportCard">
+            <div class="card-title">3. Export</div>
+            <div class="btn-group">
+                <button class="btn btn-outline" onclick="exportDocx()">
+                    📄 Download DOCX Transcript
+                </button>
+                <button class="btn btn-outline" id="csvBtn" onclick="exportCsv()" disabled>
+                    📊 Download CSV Attributes
+                </button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    let currentSessionId = null;
+
+    // ─── Drag & Drop ───
+    const zone = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('audioInput');
+
+    ['dragenter','dragover'].forEach(e => zone.addEventListener(e, ev => {
+        ev.preventDefault(); zone.classList.add('dragover');
+    }));
+    ['dragleave','drop'].forEach(e => zone.addEventListener(e, ev => {
+        ev.preventDefault(); zone.classList.remove('dragover');
+    }));
+    zone.addEventListener('drop', ev => {
+        const file = ev.dataTransfer.files[0];
+        if (file) { fileInput.files = ev.dataTransfer.files; handleFileSelect(file); }
+    });
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files[0]) handleFileSelect(fileInput.files[0]);
+    });
+
+    function handleFileSelect(file) {
+        const el = document.getElementById('selectedFile');
+        const sizeMB = (file.size / (1024*1024)).toFixed(1);
+        el.textContent = `${file.name} (${sizeMB} MB)`;
+        el.classList.remove('hidden');
+        document.getElementById('transcribeBtn').disabled = false;
+    }
+
+    // ─── Status Helpers ───
+    function showStatus(type, msg, spinner = false) {
+        const area = document.getElementById('statusArea');
+        area.innerHTML = `<div class="status-bar ${type}">
+            ${spinner ? '<div class="spinner"></div>' : ''}
+            ${msg}
+        </div>`;
+    }
+    function clearStatus() {
+        document.getElementById('statusArea').innerHTML = '';
+    }
+
+    // ─── Transcribe ───
+    async function transcribe() {
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        const btn = document.getElementById('transcribeBtn');
+        btn.disabled = true;
+        btn.textContent = 'Transcribing...';
+        showStatus('info', 'Uploading and transcribing audio... this may take a minute.', true);
+
+        const formData = new FormData();
+        formData.append('audio', file);
+
+        try {
+            const res = await fetch('/api/transcribe', { method: 'POST', body: formData });
+            const data = await res.json();
+
+            if (!res.ok) throw new Error(data.error);
+
+            currentSessionId = data.session_id;
+
+            // Show stats
+            const statsEl = document.getElementById('transcriptStats');
+            const dur = data.duration_seconds || 0;
+            const mins = Math.floor(dur / 60);
+            const secs = Math.floor(dur % 60);
+            statsEl.innerHTML = `
+                <div class="stat">
+                    <div class="stat-label">Duration</div>
+                    <div class="stat-value">${mins}m ${secs}s</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Words</div>
+                    <div class="stat-value">${data.word_count.toLocaleString()}</div>
+                </div>
+            `;
+
+            // Show transcript
+            const box = document.getElementById('transcriptBox');
+            if (data.utterances && data.utterances.length > 0) {
+                box.innerHTML = data.utterances.map(u => `
+                    <div class="utterance">
+                        <div class="speaker-label">Speaker ${u.speaker}</div>
+                        <div>${u.text}</div>
+                    </div>
+                `).join('');
+            } else {
+                box.textContent = data.text;
+            }
+
+            document.getElementById('transcriptCard').classList.remove('hidden');
+            document.getElementById('promptCard').classList.remove('hidden');
+            document.getElementById('exportCard').classList.remove('hidden');
+
+            showStatus('success', 'Transcription complete!');
+            setTimeout(clearStatus, 3000);
+
+        } catch (err) {
+            showStatus('error', `Error: ${err.message}`);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Transcribe Audio';
+        }
+    }
+
+    // ─── Analyze ───
+    async function analyze() {
+        const prompt = document.getElementById('analysisPrompt').value.trim();
+        if (!prompt) { showStatus('error', 'Please enter an analysis prompt.'); return; }
+        if (!currentSessionId) { showStatus('error', 'Transcribe audio first.'); return; }
+
+        const btn = document.getElementById('analyzeBtn');
+        btn.disabled = true;
+        btn.textContent = 'Analyzing...';
+        showStatus('info', 'Running analysis with Claude...', true);
+
+        try {
+            const model = document.getElementById('modelSelect').value;
+            const res = await fetch('/api/analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    session_id: currentSessionId,
+                    prompt: prompt,
+                    model: model,
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+
+            // Show summary
+            const summaryEl = document.getElementById('summaryBox');
+            const summarySection = document.getElementById('summarySection');
+            if (data.summary) {
+                summaryEl.textContent = data.summary;
+                summarySection.classList.remove('hidden');
+            }
+
+            // Show attributes table
+            const attrsSection = document.getElementById('attrsSection');
+            const tbody = document.getElementById('attrsBody');
+            tbody.innerHTML = '';
+            if (data.attributes && Object.keys(data.attributes).length > 0) {
+                for (const [key, val] of Object.entries(data.attributes)) {
+                    tbody.innerHTML += `<tr><td>${key}</td><td>${val}</td></tr>`;
+                }
+                attrsSection.classList.remove('hidden');
+                document.getElementById('csvBtn').disabled = false;
+            }
+
+            document.getElementById('analysisCard').classList.remove('hidden');
+
+            if (data.note) {
+                showStatus('warning', data.note);
+            } else {
+                showStatus('success', 'Analysis complete!');
+                setTimeout(clearStatus, 3000);
+            }
+
+        } catch (err) {
+            showStatus('error', `Error: ${err.message}`);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Run Analysis';
+        }
+    }
+
+    // ─── Export Helpers ───
+    async function exportDocx() {
+        if (!currentSessionId) return;
+        try {
+            const res = await fetch('/api/export/docx', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ session_id: currentSessionId }),
+            });
+            if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+            const blob = await res.blob();
+            downloadBlob(blob, 'transcript.docx');
+        } catch (err) {
+            showStatus('error', `Export error: ${err.message}`);
+        }
+    }
+
+    async function exportCsv() {
+        if (!currentSessionId) return;
+        try {
+            const res = await fetch('/api/export/csv', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ session_id: currentSessionId }),
+            });
+            if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+            const blob = await res.blob();
+            downloadBlob(blob, 'analysis.csv');
+        } catch (err) {
+            showStatus('error', `Export error: ${err.message}`);
+        }
+    }
+
+    function downloadBlob(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    }
+</script>
+</body>
+</html>
