@@ -82,6 +82,7 @@ def transcribe():
     try:
         # Configure transcription
         config = aai.TranscriptionConfig(
+            speech_model=aai.SpeechModel.universal2,
             speaker_labels=True,
             auto_highlights=True,
         )
