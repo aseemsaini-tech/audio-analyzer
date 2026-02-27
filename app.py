@@ -158,7 +158,7 @@ def analyze():
     data = request.get_json()
     session_id = data.get("session_id")
     analysis_prompt = data.get("prompt", "")
-    model = data.get("model", "claude-sonnet-4-5-20250929")
+    model = data.get("model", "claude-sonnet-4-6")
 
     session = load_session(session_id) if session_id else None
     if not session:
