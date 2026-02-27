@@ -37,240 +37,161 @@
             align-items: center;
             gap: 12px;
         }
-        .header h1 {
-            font-size: 20px;
-            font-weight: 600;
-            letter-spacing: -0.3px;
-        }
+        .header h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.3px; }
         .header .badge {
-            font-size: 11px;
-            background: var(--accent);
-            color: white;
-            padding: 3px 8px;
-            border-radius: 20px;
-            font-weight: 500;
+            font-size: 11px; background: var(--accent); color: white;
+            padding: 3px 8px; border-radius: 20px; font-weight: 500;
         }
 
         /* ─── Layout ─── */
         .container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0;
-            height: calc(100vh - 65px);
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 0; height: calc(100vh - 65px);
         }
-        .panel {
-            padding: 24px;
-            overflow-y: auto;
-        }
-        .panel-left {
-            border-right: 1px solid var(--border);
-        }
+        .panel { padding: 24px; overflow-y: auto; }
+        .panel-left { border-right: 1px solid var(--border); }
 
         /* ─── Cards ─── */
         .card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 20px;
-            margin-bottom: 16px;
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 20px; margin-bottom: 16px;
         }
         .card-title {
-            font-size: 13px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-dim);
+            font-size: 13px; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.5px; color: var(--text-dim); margin-bottom: 14px;
+        }
+        .card-title-row {
+            display: flex; align-items: center; justify-content: space-between;
             margin-bottom: 14px;
         }
+        .card-title-row .card-title { margin-bottom: 0; }
 
         /* ─── Upload Zone ─── */
         .upload-zone {
-            border: 2px dashed var(--border);
-            border-radius: var(--radius);
-            padding: 40px 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s;
+            border: 2px dashed var(--border); border-radius: var(--radius);
+            padding: 40px 20px; text-align: center; cursor: pointer; transition: all 0.2s;
         }
         .upload-zone:hover, .upload-zone.dragover {
-            border-color: var(--accent);
-            background: rgba(108, 99, 255, 0.05);
+            border-color: var(--accent); background: rgba(108, 99, 255, 0.05);
         }
         .upload-zone .icon { font-size: 36px; margin-bottom: 8px; }
         .upload-zone p { color: var(--text-dim); font-size: 14px; }
-        .upload-zone .filename {
-            color: var(--accent);
-            font-weight: 500;
-            margin-top: 8px;
-        }
+        .upload-zone .filename { color: var(--accent); font-weight: 500; margin-top: 8px; }
         input[type="file"] { display: none; }
 
         /* ─── Buttons ─── */
         .btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 20px;
-            border-radius: 8px;
-            border: none;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 10px 20px; border-radius: 8px; border: none;
+            font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.15s;
+        }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+        .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+        .btn-outline:hover:not(:disabled) { background: var(--surface2); }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+        .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+        .btn-copy {
+            background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border);
+            padding: 5px 10px; border-radius: 6px; font-size: 11px; cursor: pointer;
             transition: all 0.15s;
         }
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
+        .btn-copy:hover { background: var(--accent); color: white; border-color: var(--accent); }
+        .btn-copy.copied { background: var(--success); color: white; border-color: var(--success); }
+
+        /* ─── Call Type Toggle ─── */
+        .call-type-toggle {
+            display: flex; gap: 0; border-radius: 8px; overflow: hidden;
+            border: 1px solid var(--border); margin-bottom: 14px;
         }
-        .btn-primary {
-            background: var(--accent);
-            color: white;
+        .call-type-btn {
+            flex: 1; padding: 10px 16px; text-align: center; cursor: pointer;
+            font-size: 13px; font-weight: 500; background: var(--surface2);
+            color: var(--text-dim); border: none; transition: all 0.15s;
         }
-        .btn-primary:hover:not(:disabled) {
-            background: var(--accent-hover);
+        .call-type-btn.active {
+            background: var(--accent); color: white;
         }
-        .btn-outline {
-            background: transparent;
-            color: var(--text);
-            border: 1px solid var(--border);
-        }
-        .btn-outline:hover:not(:disabled) {
-            background: var(--surface2);
-        }
-        .btn-group {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
+        .call-type-btn:not(.active):hover { background: var(--border); }
 
         /* ─── Textarea ─── */
         textarea {
-            width: 100%;
-            min-height: 160px;
-            background: var(--surface2);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 14px;
-            color: var(--text);
-            font-family: 'SF Mono', 'Fira Code', monospace;
-            font-size: 13px;
-            line-height: 1.6;
-            resize: vertical;
+            width: 100%; min-height: 160px; background: var(--surface2);
+            border: 1px solid var(--border); border-radius: 8px; padding: 14px;
+            color: var(--text); font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 13px; line-height: 1.6; resize: vertical;
         }
-        textarea:focus {
-            outline: none;
-            border-color: var(--accent);
-        }
-        textarea::placeholder {
-            color: var(--text-dim);
-        }
+        textarea:focus { outline: none; border-color: var(--accent); }
+        textarea::placeholder { color: var(--text-dim); }
 
         /* ─── Select ─── */
         select {
-            background: var(--surface2);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 8px 12px;
-            color: var(--text);
-            font-size: 13px;
-            cursor: pointer;
+            background: var(--surface2); border: 1px solid var(--border);
+            border-radius: 8px; padding: 8px 12px; color: var(--text);
+            font-size: 13px; cursor: pointer;
         }
         select:focus { outline: none; border-color: var(--accent); }
 
         /* ─── Transcript Display ─── */
         .transcript-box {
-            background: var(--surface2);
-            border-radius: 8px;
-            padding: 16px;
-            max-height: 300px;
-            overflow-y: auto;
-            font-size: 14px;
-            line-height: 1.7;
+            background: var(--surface2); border-radius: 8px; padding: 16px;
+            max-height: 300px; overflow-y: auto; font-size: 14px; line-height: 1.7;
         }
         .utterance {
-            margin-bottom: 12px;
-            padding-bottom: 12px;
+            margin-bottom: 12px; padding-bottom: 12px;
             border-bottom: 1px solid var(--border);
         }
         .utterance:last-child { border-bottom: none; }
-        .speaker-label {
-            font-weight: 600;
-            color: var(--accent);
-            font-size: 12px;
-            margin-bottom: 2px;
-        }
+        .speaker-label { font-weight: 600; color: var(--accent); font-size: 12px; margin-bottom: 2px; }
 
         /* ─── Analysis Results ─── */
         .summary-box {
-            background: var(--surface2);
-            border-radius: 8px;
-            padding: 16px;
-            font-size: 14px;
-            line-height: 1.7;
-            white-space: pre-wrap;
+            background: var(--surface2); border-radius: 8px; padding: 16px;
+            font-size: 14px; line-height: 1.7; white-space: pre-wrap;
         }
-        .attr-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-        }
+        .attr-table { width: 100%; border-collapse: collapse; font-size: 13px; }
         .attr-table th, .attr-table td {
-            padding: 10px 14px;
-            text-align: left;
-            border-bottom: 1px solid var(--border);
+            padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border);
         }
         .attr-table th {
-            color: var(--text-dim);
-            font-weight: 600;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            color: var(--text-dim); font-weight: 600; font-size: 11px;
+            text-transform: uppercase; letter-spacing: 0.5px;
         }
         .attr-table td:first-child {
-            font-family: 'SF Mono', monospace;
-            color: var(--accent);
-            font-size: 12px;
+            font-family: 'SF Mono', monospace; color: var(--accent); font-size: 12px;
         }
 
         /* ─── Status / Progress ─── */
         .status-bar {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 14px;
-            border-radius: 8px;
-            font-size: 13px;
-            margin-bottom: 16px;
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 16px;
         }
         .status-bar.info { background: rgba(108,99,255,0.1); color: var(--accent); }
         .status-bar.success { background: rgba(45,212,168,0.1); color: var(--success); }
         .status-bar.error { background: rgba(248,113,113,0.1); color: var(--error); }
 
         .spinner {
-            width: 16px; height: 16px;
-            border: 2px solid transparent;
-            border-top-color: currentColor;
-            border-radius: 50%;
+            width: 16px; height: 16px; border: 2px solid transparent;
+            border-top-color: currentColor; border-radius: 50%;
             animation: spin 0.6s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
         /* ─── Stats Row ─── */
-        .stats {
-            display: flex;
-            gap: 16px;
-            margin-bottom: 16px;
-        }
-        .stat {
-            background: var(--surface2);
-            padding: 10px 14px;
-            border-radius: 8px;
-            flex: 1;
-        }
+        .stats { display: flex; gap: 16px; margin-bottom: 16px; }
+        .stat { background: var(--surface2); padding: 10px 14px; border-radius: 8px; flex: 1; }
         .stat-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; }
         .stat-value { font-size: 18px; font-weight: 600; margin-top: 4px; }
 
         .hidden { display: none; }
+
+        /* ─── Edit prompt link ─── */
+        .edit-link {
+            font-size: 12px; color: var(--accent); cursor: pointer;
+            text-decoration: underline; margin-left: 8px;
+        }
+        .edit-link:hover { color: var(--accent-hover); }
 
         /* ─── Scrollbar ─── */
         ::-webkit-scrollbar { width: 6px; }
@@ -310,30 +231,41 @@
 
         <!-- Transcript -->
         <div class="card hidden" id="transcriptCard">
-            <div class="card-title">Transcript</div>
+            <div class="card-title-row">
+                <div class="card-title">Transcript</div>
+                <button class="btn-copy" onclick="copyTranscript(this)">Copy to Clipboard</button>
+            </div>
             <div class="stats" id="transcriptStats"></div>
             <div class="transcript-box" id="transcriptBox"></div>
         </div>
 
         <!-- Analysis Prompt -->
         <div class="card hidden" id="promptCard">
-            <div class="card-title">2. Analysis Prompt</div>
-            <textarea id="analysisPrompt" placeholder="Paste your analysis prompt here...
+            <div class="card-title">2. Call Type & Analysis Prompt</div>
 
-Example:
-Analyze this transcript and extract the following attributes:
-- sentiment (positive/negative/neutral)
-- main_topic (1-3 words)
-- key_points (comma-separated list)
-- speaker_count (number)
-- action_items (comma-separated list)
-- urgency (low/medium/high)
-- language_quality (score 1-10)"></textarea>
+            <!-- Call Type Toggle -->
+            <div class="call-type-toggle">
+                <button class="call-type-btn active" id="btnInbound" onclick="setCallType('inbound')">
+                    Inbound Call
+                </button>
+                <button class="call-type-btn" id="btnOutbound" onclick="setCallType('outbound')">
+                    Outbound Call
+                </button>
+            </div>
+
+            <textarea id="analysisPrompt"></textarea>
+
+            <div style="margin-top:8px; display:flex; align-items:center; gap:8px;">
+                <span class="edit-link" onclick="saveCurrentPrompt()">Save prompt as default</span>
+                <span class="edit-link" onclick="resetPrompt()">Reset to default</span>
+            </div>
+
             <div style="margin-top:12px; display:flex; align-items:center; gap:12px">
                 <button class="btn btn-primary" id="analyzeBtn" onclick="analyze()">
                     Run Analysis
                 </button>
                 <select id="modelSelect">
+                    <option value="claude-sonnet-4-6">Claude Sonnet 4.6 (latest)</option>
                     <option value="claude-sonnet-4-5-20250929">Claude Sonnet 4.5</option>
                     <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (faster)</option>
                     <option value="claude-opus-4-5-20251101">Claude Opus 4.5 (best)</option>
@@ -357,7 +289,10 @@ Analyze this transcript and extract the following attributes:
                 <div class="summary-box" id="summaryBox"></div>
             </div>
             <div id="attrsSection" class="hidden" style="margin-top:20px">
-                <h3 style="font-size:14px; margin-bottom:8px; font-weight:600;">Extracted Attributes</h3>
+                <div class="card-title-row">
+                    <h3 style="font-size:14px; font-weight:600;">Extracted Attributes</h3>
+                    <button class="btn-copy" onclick="copyAttributesRow(this)">Copy Row for Google Sheets</button>
+                </div>
                 <table class="attr-table" id="attrsTable">
                     <thead><tr><th>Attribute</th><th>Value</th></tr></thead>
                     <tbody id="attrsBody"></tbody>
@@ -370,10 +305,10 @@ Analyze this transcript and extract the following attributes:
             <div class="card-title">3. Export</div>
             <div class="btn-group">
                 <button class="btn btn-outline" onclick="exportDocx()">
-                    📄 Download DOCX Transcript
+                    Download DOCX Transcript
                 </button>
                 <button class="btn btn-outline" id="csvBtn" onclick="exportCsv()" disabled>
-                    📊 Download CSV Attributes
+                    Download CSV Attributes
                 </button>
             </div>
         </div>
@@ -383,6 +318,190 @@ Analyze this transcript and extract the following attributes:
 
 <script>
     let currentSessionId = null;
+    let currentCallType = 'inbound';
+    let lastTranscriptData = null;
+    let lastAttributesData = null;
+
+    // ─── Default prompt (shared for both call types) ───
+    const DEFAULT_PROMPT = `ROLE DEFINITION
+You are an enterprise-grade AI system for inbound CRM call analytics.
+Your function is to analyze batches of inbound CRM calls (orders, queries, or complaints) and generate a row-wise, structured output suitable for direct ingestion into Google Sheets. Also output a document that contains transcription of all input audios that you have used for analysis
+Your operating priorities, in descending order, are:
+* Accuracy
+* Completeness
+* Evidence-based reasoning
+* Non-hallucination
+* Structural consistency across the entire batch
+
+INPUT EXPECTATIONS
+* Audio recordings of inbound CRM calls
+* Each call represents a unique customer interaction
+* Calls may relate to prior interactions within a 7-day window
+
+MANDATORY PRE-PROCESSING
+TRANSCRIPTION REQUIREMENTS
+If audio is provided, perform transcription internally before analysis
+* Use strict speaker labels:
+   * Customer:
+   * Agent:
+* Do not merge, paraphrase, summarize, or reinterpret speech
+* Preserve:
+   * Pauses
+   * Interruptions
+   * Hesitations
+   * Emotional cues (e.g., sighs, raised voice, prolonged silence)
+* If speaker identity is unclear, label as:
+   * Unknown speaker
+* Do not resolve ambiguity by assumption.
+
+EVIDENCE STANDARD
+Every analytical output must be directly supported by explicit evidence in the call
+If evidence is insufficient or ambiguous, return:
+Unknown
+Not determinable from call
+Insufficient signal
+Never infer, interpolate, or guess.
+
+OUTPUT FORMAT REQUIREMENTS
+* Output only a Google Sheets-ready table
+* One row per call
+* Column names must exactly match the defined attributes
+* Use consistent categorical values
+* Numeric fields must contain numeric values only
+* Avoid free-text unless explicitly required
+* No commentary, explanations, or summaries are permitted in the output.
+
+REQUIRED ANALYSIS ATTRIBUTES (COLUMNS)
+* Wait / hold time instances
+* Repeat call flag (same issue < 7 days)
+* Primary intent
+* Multi-intent flag (yes/no)
+* Was this call preventable? (yes/no/unknown)
+* Secondary / hidden intent
+* Intent recognized correctly by agent (yes/no/partial/unknown)
+* Complaint type
+* Complaint severity (mild / serious / urgent)
+* First-contact resolution (FCR) (yes/no/partial)
+* Resolution promised (yes/no, timeline given or not)
+* Unresolved intent at end of call (yes/no)
+* Overall call sentiment (positive / neutral / negative)
+* Sentiment arc (opening > mid > closing)
+* Emotional peak moment (timestamp or call phase)
+* Specific emotions detected
+* Emotional intensity score (1-10)
+* Closing sentiment delta (improved / worsened / no change)
+* Expressed satisfaction / dissatisfaction (explicit yes/no)
+* Did agent proactively mention a generic? (yes/no)
+* Customer reaction to generic suggestion
+* Reason for resistance to generic
+* Was a generic switch completed on this call? (yes/no)
+* Upsell / cross-sell opportunity (yes/no)
+* Upsell / cross-sell attempt by agent (yes/no)
+* Greeting quality & script adherence (poor / acceptable / strong)
+* Active listening signals (present / weak / absent)
+* Empathy markers used (yes/no, specify briefly)
+* Closing quality (poor / acceptable / strong)
+* Dead air / excessive filler words (yes/no, agent/customer/both)
+* Agent handled objection (yes/no + quality)
+* Negative agent behavior flags
+* Agent speech rate (too fast / appropriate / too slow)
+* Background noise on agent side (none / mild / disruptive)
+
+NEGATIVE BEHAVIOR CONSTRAINTS (ANTI-HALLUCINATION)
+You must NOT:
+* Infer customer intent without explicit verbal evidence
+* Assume emotional states without tonal or linguistic indicators
+* Guess timestamps, durations, or emotional peaks
+* Normalize, soften, or excuse agent misconduct
+* Mark satisfaction unless explicitly expressed
+* Mark FCR as "yes" unless the issue is fully resolved during the call
+* Assume repeat calls without direct confirmation or metadata
+* Attribute causality or blame without explicit evidence
+* Use speculative language such as "likely", "appears", or "seems"
+* When uncertain, output Unknown.
+
+QUALITY ASSURANCE CHECKS (MANDATORY)
+Before final output:
+* Verify speaker attribution accuracy
+* Validate sentiment alignment with transcript content
+* Confirm resolution status versus promise language
+* Ensure intent classification matches agent response
+* Confirm all columns are populated
+
+SELF-REGULATION DIRECTIVES
+You must:
+* Operate deliberately and conservatively
+* Optimize for audit-grade defensibility
+* Prefer "unknown" over incorrect certainty
+* Assume outputs may be used for:
+* Compliance reviews
+* Agent performance management
+* Executive reporting
+* Helpfulness is defined by precision, not completion.
+
+FINAL OUTPUT RULE
+Produce only the completed Google Sheets-ready table for the full batch.
+Produce a document that contains transcription of all input audios uploaded for analysis
+No additional text is permitted.`;
+
+    // ─── Saved prompts (localStorage) ───
+    function getStorageKey(type) { return `callPrompt_${type}`; }
+
+    function getSavedPrompt(type) {
+        return localStorage.getItem(getStorageKey(type)) || DEFAULT_PROMPT;
+    }
+
+    function saveCurrentPrompt() {
+        const prompt = document.getElementById('analysisPrompt').value;
+        localStorage.setItem(getStorageKey(currentCallType), prompt);
+        showStatus('success', `Default prompt saved for ${currentCallType} calls.`);
+        setTimeout(clearStatus, 2000);
+    }
+
+    function resetPrompt() {
+        localStorage.removeItem(getStorageKey(currentCallType));
+        document.getElementById('analysisPrompt').value = DEFAULT_PROMPT;
+        showStatus('success', `Prompt reset to default for ${currentCallType} calls.`);
+        setTimeout(clearStatus, 2000);
+    }
+
+    function setCallType(type) {
+        // Save current prompt before switching
+        localStorage.setItem(getStorageKey(currentCallType), document.getElementById('analysisPrompt').value);
+
+        currentCallType = type;
+        document.getElementById('btnInbound').classList.toggle('active', type === 'inbound');
+        document.getElementById('btnOutbound').classList.toggle('active', type === 'outbound');
+        document.getElementById('analysisPrompt').value = getSavedPrompt(type);
+    }
+
+    // ─── Copy to Clipboard helpers ───
+    function flashCopied(btn) {
+        const orig = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1500);
+    }
+
+    function copyTranscript(btn) {
+        if (!lastTranscriptData) return;
+        let text = '';
+        if (lastTranscriptData.utterances && lastTranscriptData.utterances.length > 0) {
+            text = lastTranscriptData.utterances.map(u => `Speaker ${u.speaker}: ${u.text}`).join('\n\n');
+        } else {
+            text = lastTranscriptData.text || '';
+        }
+        navigator.clipboard.writeText(text).then(() => flashCopied(btn));
+    }
+
+    function copyAttributesRow(btn) {
+        if (!lastAttributesData) return;
+        // Tab-separated values (paste directly into Google Sheets)
+        const headers = Object.keys(lastAttributesData).join('\t');
+        const values = Object.values(lastAttributesData).map(v => String(v)).join('\t');
+        const row = headers + '\n' + values;
+        navigator.clipboard.writeText(row).then(() => flashCopied(btn));
+    }
 
     // ─── Drag & Drop ───
     const zone = document.getElementById('uploadZone');
@@ -442,6 +561,7 @@ Analyze this transcript and extract the following attributes:
             if (!res.ok) throw new Error(data.error);
 
             currentSessionId = data.session_id;
+            lastTranscriptData = data;
 
             // Show stats
             const statsEl = document.getElementById('transcriptStats');
@@ -525,6 +645,7 @@ Analyze this transcript and extract the following attributes:
             const tbody = document.getElementById('attrsBody');
             tbody.innerHTML = '';
             if (data.attributes && Object.keys(data.attributes).length > 0) {
+                lastAttributesData = data.attributes;
                 for (const [key, val] of Object.entries(data.attributes)) {
                     tbody.innerHTML += `<tr><td>${key}</td><td>${val}</td></tr>`;
                 }
@@ -592,6 +713,9 @@ Analyze this transcript and extract the following attributes:
         a.remove();
         URL.revokeObjectURL(url);
     }
+
+    // ─── Initialize prompt on page load ───
+    document.getElementById('analysisPrompt').value = getSavedPrompt('inbound');
 </script>
 </body>
 </html>
