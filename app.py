@@ -30,11 +30,27 @@ app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", secrets.token_hex(32))
 BASE_TMP = Path(tempfile.gettempdir()) / "audio-analyzer"
 UPLOAD_DIR = BASE_TMP / "uploads"
 OUTPUT_DIR = BASE_TMP / "outputs"
+SESSION_DIR = BASE_TMP / "sessions"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+SESSION_DIR.mkdir(parents=True, exist_ok=True)
 
-# ─── Store session data in-memory ───
-session_store = {}
+
+# ─── File-based session store (works across multiple workers) ───
+def save_session(session_id, data):
+    """Save session data to a JSON file."""
+    path = SESSION_DIR / f"{session_id}.json"
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False)
+
+
+def load_session(session_id):
+    """Load session data from a JSON file. Returns None if not found."""
+    path = SESSION_DIR / f"{session_id}.json"
+    if not path.exists():
+        return None
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 
 def get_clients():
@@ -80,7 +96,7 @@ def transcribe():
     audio_file.save(filepath)
 
     try:
-        # Configure transcription
+        # Configure transcription (universal-2 supports Hindi + multilingual)
         config = aai.TranscriptionConfig(
             speech_models=["universal-2"],
             speaker_labels=True,
@@ -105,15 +121,15 @@ def transcribe():
 
         full_text = transcript.text or ""
 
-        # Store in session
+        # Store in session (file-based for multi-worker support)
         session_id = filename.split(".")[0]
-        session_store[session_id] = {
+        save_session(session_id, {
             "filename": audio_file.filename,
             "full_text": full_text,
             "utterances": utterances,
             "duration_seconds": (transcript.audio_duration or 0),
             "timestamp": datetime.now().isoformat(),
-        }
+        })
 
         return jsonify({
             "session_id": session_id,
@@ -144,12 +160,11 @@ def analyze():
     analysis_prompt = data.get("prompt", "")
     model = data.get("model", "claude-sonnet-4-5-20250929")
 
-    if not session_id or session_id not in session_store:
+    session = load_session(session_id) if session_id else None
+    if not session:
         return jsonify({"error": "Invalid session. Please transcribe audio first."}), 400
     if not analysis_prompt.strip():
         return jsonify({"error": "Analysis prompt cannot be empty."}), 400
-
-    session = session_store[session_id]
     transcript_text = session["full_text"]
 
     # Build the message for Claude
@@ -191,12 +206,13 @@ Respond with JSON containing "summary" and "attributes" keys."""
         attributes = result.get("attributes", {})
 
         # Store analysis in session
-        session_store[session_id]["analysis"] = {
+        session["analysis"] = {
             "summary": summary,
             "attributes": attributes,
             "prompt_used": analysis_prompt,
             "model": model,
         }
+        save_session(session_id, session)
 
         return jsonify({
             "summary": summary,
@@ -205,12 +221,13 @@ Respond with JSON containing "summary" and "attributes" keys."""
 
     except json.JSONDecodeError:
         # If Claude didn't return valid JSON, return the raw text
-        session_store[session_id]["analysis"] = {
+        session["analysis"] = {
             "summary": response_text,
             "attributes": {},
             "prompt_used": analysis_prompt,
             "model": model,
         }
+        save_session(session_id, session)
         return jsonify({
             "summary": response_text,
             "attributes": {},
@@ -226,10 +243,9 @@ def export_docx():
     data = request.get_json()
     session_id = data.get("session_id")
 
-    if not session_id or session_id not in session_store:
+    session = load_session(session_id) if session_id else None
+    if not session:
         return jsonify({"error": "Invalid session."}), 400
-
-    session = session_store[session_id]
 
     doc = Document()
 
@@ -320,10 +336,10 @@ def export_csv():
     data = request.get_json()
     session_id = data.get("session_id")
 
-    if not session_id or session_id not in session_store:
+    session = load_session(session_id) if session_id else None
+    if not session:
         return jsonify({"error": "Invalid session."}), 400
 
-    session = session_store[session_id]
     analysis = session.get("analysis")
 
     if not analysis or not analysis.get("attributes"):
@@ -358,13 +374,16 @@ def export_csv():
 def list_sessions():
     """List active sessions."""
     sessions = []
-    for sid, data in session_store.items():
-        sessions.append({
-            "session_id": sid,
-            "filename": data["filename"],
-            "timestamp": data["timestamp"],
-            "has_analysis": "analysis" in data,
-        })
+    for path in SESSION_DIR.glob("*.json"):
+        sid = path.stem
+        data = load_session(sid)
+        if data:
+            sessions.append({
+                "session_id": sid,
+                "filename": data["filename"],
+                "timestamp": data["timestamp"],
+                "has_analysis": "analysis" in data,
+            })
     return jsonify(sessions)
 
 
