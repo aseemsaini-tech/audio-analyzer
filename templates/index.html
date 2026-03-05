@@ -302,8 +302,8 @@ let lastTranscriptData = null;
 let lastFullRow = null;
 let historyData = [];
 
-// ═══ ORDERED ATTRIBUTE KEYS (consistent across all runs) ═══
-const ORDERED_ATTRS = [
+// ═══ ORDERED ATTRIBUTE KEYS (separate sets for inbound vs outbound) ═══
+const INBOUND_ATTRS = [
     "wait_hold_time_instances","repeat_call_flag","primary_intent","multi_intent_flag",
     "call_preventable","secondary_hidden_intent","intent_recognized_correctly","complaint_type",
     "complaint_severity","fcr","resolution_promised","unresolved_intent_at_end",
@@ -315,45 +315,168 @@ const ORDERED_ATTRS = [
     "dead_air_filler_words","agent_handled_objection","negative_agent_behavior_flags",
     "agent_speech_rate","background_noise_agent"
 ];
+const OUTBOUND_ATTRS = [
+    "primary_call_objective","call_objective_achieved","reason_for_non_achievement",
+    "customer_action_committed","follow_up_required","follow_up_to_inbound_complaint",
+    "customer_receptivity_at_opening","opt_out_expressed","dissatisfaction_with_contact",
+    "overall_sentiment","sentiment_arc","emotional_peak_moment","specific_emotions_detected",
+    "emotional_intensity_score","closing_sentiment_delta","expressed_satisfaction",
+    "agent_mentioned_generic","substitution_pitch_quality","customer_reaction_generic",
+    "reason_resistance_generic","generic_switch_completed","upsell_crosssell_opportunity",
+    "upsell_crosssell_attempt","customer_referenced_digital","competitor_mentioned",
+    "greeting_quality","active_listening_signals","empathy_markers","closing_quality",
+    "dead_air_filler_words","agent_handled_objection","negative_agent_behavior_flags",
+    "agent_speech_rate"
+];
+function getAttrsForType(callType) { return callType === 'outbound' ? OUTBOUND_ATTRS : INBOUND_ATTRS; }
+
 const META_COLS = ["filename","call_type","date","duration_seconds","word_count","transcript"];
 
 function buildFullRow(metadata, attributes) {
     const row = {};
+    const attrs = getAttrsForType(metadata.call_type || currentCallType);
     META_COLS.forEach(k => { row[k] = metadata[k] || ''; });
-    ORDERED_ATTRS.forEach(k => { row[k] = attributes[k] || 'Unknown'; });
+    attrs.forEach(k => { row[k] = attributes[k] || 'Unknown'; });
     return row;
 }
 
 // ═══ PROMPTS ═══
-const INBOUND_PROMPT = `You are an enterprise-grade AI system for inbound CRM call analytics.
+const INBOUND_PROMPT = `ROLE
+You are an enterprise-grade AI analyst for inbound CRM calls at a healthcare/pharmacy company.
+You will receive a pre-generated transcript (produced by an external speech-to-text engine). Your sole task is to analyze it and return structured JSON.
 
-Analyze the provided transcript and return a JSON object with exactly two keys:
-1. "summary": 2-3 sentence overview of the call.
-2. "attributes": An object with EXACTLY these keys in this order (use snake_case). If evidence is insufficient, use "Unknown":
+INPUT
+- A text transcript of one inbound CRM call (order, query, or complaint).
+- Speaker labels (e.g. "Speaker A", "Speaker B") are assigned by the transcription engine. Infer who is the Agent and who is the Customer from conversational context (greeting style, asking for order details, providing help = Agent; calling in, stating problems, asking questions = Customer).
+- The transcript may contain Hindi, Hinglish (Hindi-English mix), or regional language fragments. Analyze meaning in the original language — do not skip non-English content.
+- Transcription artifacts (repeated words, filler sounds, incomplete sentences) are normal. Do not treat them as meaningful signal unless they indicate hesitation or emotional state.
 
-wait_hold_time_instances, repeat_call_flag, primary_intent, multi_intent_flag, call_preventable, secondary_hidden_intent, intent_recognized_correctly, complaint_type, complaint_severity, fcr, resolution_promised, unresolved_intent_at_end, overall_sentiment, sentiment_arc, emotional_peak_moment, specific_emotions_detected, emotional_intensity_score, closing_sentiment_delta, expressed_satisfaction, agent_mentioned_generic, customer_reaction_generic, reason_resistance_generic, generic_switch_completed, upsell_crosssell_opportunity, upsell_crosssell_attempt, greeting_quality, active_listening_signals, empathy_markers, closing_quality, dead_air_filler_words, agent_handled_objection, negative_agent_behavior_flags, agent_speech_rate, background_noise_agent
+EVIDENCE STANDARD
+- Every analytical value must be directly supported by explicit evidence in the transcript text.
+- If evidence is insufficient, ambiguous, or absent, return "Unknown" for that field.
+- Never infer, interpolate, speculate, or guess.
+- Do not use hedging language ("likely", "appears to", "seems", "probably").
+- Prefer "Unknown" over incorrect certainty. Outputs may be used for compliance reviews, agent performance management, and executive reporting.
 
-Rules:
-- Every output must be supported by explicit evidence in the transcript
-- Never infer, interpolate, or guess. When uncertain, output "Unknown"
-- Use strict categorical values: yes/no, positive/neutral/negative, poor/acceptable/strong, mild/serious/urgent, present/weak/absent, 1-10 for scores
-- Do not add extra keys beyond the list above
-- Respond ONLY with valid JSON, no markdown fences`;
+OUTPUT FORMAT
+Return ONLY a valid JSON object (no markdown fences, no commentary, no extra text) with exactly two keys:
 
-const OUTBOUND_PROMPT = `You are an enterprise-grade AI system for outbound CRM call analytics.
+1. "summary": A 2-3 sentence factual overview of the call — who called, what they needed, and the outcome.
 
-Analyze the provided transcript and return a JSON object with exactly two keys:
-1. "summary": 2-3 sentence overview of the call.
-2. "attributes": An object with EXACTLY these keys in this order (use snake_case). If evidence is insufficient, use "Unknown":
+2. "attributes": An object with EXACTLY these 34 keys in this exact order. Do not add, remove, rename, or reorder any key.
 
-wait_hold_time_instances, repeat_call_flag, primary_intent, multi_intent_flag, call_preventable, secondary_hidden_intent, intent_recognized_correctly, complaint_type, complaint_severity, fcr, resolution_promised, unresolved_intent_at_end, overall_sentiment, sentiment_arc, emotional_peak_moment, specific_emotions_detected, emotional_intensity_score, closing_sentiment_delta, expressed_satisfaction, agent_mentioned_generic, customer_reaction_generic, reason_resistance_generic, generic_switch_completed, upsell_crosssell_opportunity, upsell_crosssell_attempt, greeting_quality, active_listening_signals, empathy_markers, closing_quality, dead_air_filler_words, agent_handled_objection, negative_agent_behavior_flags, agent_speech_rate, background_noise_agent
+wait_hold_time_instances — Number of times customer was placed on hold or asked to wait (integer, or "Unknown")
+repeat_call_flag — Customer explicitly states they called before about the same issue within 7 days (yes/no/Unknown)
+primary_intent — The main reason the customer called, stated in 3-6 words (e.g. "order status inquiry", "medicine complaint", "delivery not received")
+multi_intent_flag — Customer raised more than one distinct issue (yes/no)
+call_preventable — Could this call have been avoided with proactive communication or self-service? (yes/no/Unknown)
+secondary_hidden_intent — Any additional or underlying intent beyond the primary one, in 3-6 words (or "None")
+intent_recognized_correctly — Did the agent correctly identify and address the customer's intent? (yes/no/partial/Unknown)
+complaint_type — Category of complaint if any (e.g. "delivery delay", "wrong medicine", "billing error", "None")
+complaint_severity — mild/serious/urgent/None (None if no complaint)
+fcr — Was the customer's issue fully resolved during this single call? (yes/no/partial)
+resolution_promised — Did the agent promise a resolution or next step with a timeline? (yes/no)
+unresolved_intent_at_end — Does the customer still have an unaddressed issue when the call ends? (yes/no)
+overall_sentiment — The dominant emotional tone of the customer across the full call (positive/neutral/negative)
+sentiment_arc — How customer sentiment shifted across the call, as three phases (e.g. "negative → neutral → positive")
+emotional_peak_moment — The moment of strongest emotion — quote 4-8 words from the transcript, or "Unknown"
+specific_emotions_detected — Comma-separated list of distinct emotions observed (e.g. "frustration, relief" or "anger, disappointment")
+emotional_intensity_score — Peak emotional intensity on a 1-10 scale (integer). 1 = completely flat, 10 = extreme distress or joy
+closing_sentiment_delta — Did the customer's sentiment improve, worsen, or stay the same by call end? (improved/worsened/no change)
+expressed_satisfaction — Customer explicitly said they are satisfied or dissatisfied (satisfied/dissatisfied/not expressed)
+agent_mentioned_generic — Did the agent proactively suggest a generic medicine alternative? (yes/no)
+customer_reaction_generic — Customer's reaction if generic was mentioned (accepted/refused/hesitant/not applicable)
+reason_resistance_generic — If customer refused generic, their stated reason in brief (or "not applicable")
+generic_switch_completed — Was a generic substitution actually completed on this call? (yes/no/not applicable)
+upsell_crosssell_opportunity — Was there a natural opportunity to suggest additional products or services? (yes/no)
+upsell_crosssell_attempt — Did the agent attempt an upsell or cross-sell? (yes/no)
+greeting_quality — Quality of the agent's opening greeting and script adherence (poor/acceptable/strong)
+active_listening_signals — Did the agent show active listening (acknowledging, paraphrasing, confirming)? (present/weak/absent)
+empathy_markers — Did the agent use empathetic language? (yes/no). If yes, include one brief example in parentheses
+closing_quality — Quality of the agent's call closing (proper summary, next steps, polite sign-off) (poor/acceptable/strong)
+dead_air_filler_words — Notable dead air gaps or excessive filler words? (yes/no, specify agent/customer/both if yes)
+agent_handled_objection — Did the agent face and handle a customer objection? (yes/no). If yes, add quality: good/adequate/poor
+negative_agent_behavior_flags — Any negative agent behaviors observed (e.g. "interrupted customer", "dismissive tone", "None")
+agent_speech_rate — Inferred from transcript density and customer comprehension cues (too fast/appropriate/too slow/Unknown)
+background_noise_agent — Inferred from transcript artifacts suggesting disruption on agent side (none/mild/disruptive/Unknown)
 
-Rules:
-- Every output must be supported by explicit evidence in the transcript
-- Never infer, interpolate, or guess. When uncertain, output "Unknown"
-- Use strict categorical values: yes/no, positive/neutral/negative, poor/acceptable/strong, mild/serious/urgent, present/weak/absent, 1-10 for scores
-- Do not add extra keys beyond the list above
-- Respond ONLY with valid JSON, no markdown fences`;
+STRICT RULES
+- Output ONLY the JSON object. No text before or after it.
+- Every key above must appear in the output, in the listed order.
+- Use only the allowed categorical values specified for each field.
+- For numeric fields (emotional_intensity_score, wait_hold_time_instances), return integers only.
+- Do not add keys beyond the 34 listed above.
+- Do not nest objects inside attribute values — all values must be flat strings or integers.
+- Do not hallucinate timestamps — the transcript has no timestamps unless the transcription engine provided them.
+- If the transcript is too short or garbled to analyze meaningfully, return "Unknown" for all attributes and state this in the summary.`;
+
+const OUTBOUND_PROMPT = `ROLE
+You are an enterprise-grade AI analyst for outbound CRM calls at a healthcare/pharmacy company.
+You will receive a pre-generated transcript (produced by an external speech-to-text engine). Your sole task is to analyze it and return structured JSON.
+
+INPUT
+- A text transcript of one outbound CRM call (follow-up, feedback collection, order confirmation, generic substitution pitch, or proactive outreach).
+- Speaker labels (e.g. "Speaker A", "Speaker B") are assigned by the transcription engine. Infer who is the Agent and who is the Customer from conversational context (initiating the call, introducing themselves as company rep = Agent; receiving the call, confirming identity = Customer).
+- The transcript may contain Hindi, Hinglish (Hindi-English mix), or regional language fragments. Analyze meaning in the original language — do not skip non-English content.
+- Transcription artifacts (repeated words, filler sounds, incomplete sentences) are normal. Do not treat them as meaningful signal unless they indicate hesitation or emotional state.
+
+EVIDENCE STANDARD
+- Every analytical value must be directly supported by explicit evidence in the transcript text.
+- If evidence is insufficient, ambiguous, or absent, return "Unknown" for that field.
+- Never infer, interpolate, speculate, or guess.
+- Do not use hedging language ("likely", "appears to", "seems", "probably").
+- Prefer "Unknown" over incorrect certainty. Outputs may be used for compliance reviews, agent performance management, and executive reporting.
+
+OUTPUT FORMAT
+Return ONLY a valid JSON object (no markdown fences, no commentary, no extra text) with exactly two keys:
+
+1. "summary": A 2-3 sentence factual overview of the call — why the agent called, the customer's response, and the outcome.
+
+2. "attributes": An object with EXACTLY these 33 keys in this exact order. Do not add, remove, rename, or reorder any key.
+
+primary_call_objective — The main reason the agent initiated this call, stated in 3-6 words (e.g. "generic substitution pitch", "order delivery confirmation", "complaint follow-up")
+call_objective_achieved — Was the primary objective of the call met? (fully/partially/not achieved)
+reason_for_non_achievement — If not fully achieved, state the reason in one sentence (or "not applicable")
+customer_action_committed — Did the customer commit to a specific action? (yes/no). If yes, briefly state the action type (e.g. "yes — will try generic next order")
+follow_up_required — Is a follow-up needed after this call? (yes/no). If yes, specify channel (e.g. "yes — callback in 3 days", "yes — WhatsApp update")
+follow_up_to_inbound_complaint — Was this outbound call a follow-up to a previous inbound complaint? (yes/no/Unknown)
+customer_receptivity_at_opening — How receptive was the customer when they realized it was a company call? (willing/reluctant/hostile/neutral)
+opt_out_expressed — Did the customer explicitly ask to not be called again or express a "do not call" preference? (yes/no)
+dissatisfaction_with_contact — Did the customer express annoyance or dissatisfaction about being contacted? (yes/no)
+overall_sentiment — The dominant emotional tone of the customer across the full call (positive/neutral/negative)
+sentiment_arc — How customer sentiment shifted across the call, as three phases (e.g. "reluctant → neutral → positive")
+emotional_peak_moment — The moment of strongest emotion — quote 4-8 words from the transcript, or "Unknown"
+specific_emotions_detected — Comma-separated list of distinct emotions observed (e.g. "annoyance, curiosity, relief")
+emotional_intensity_score — Peak emotional intensity on a 1-10 scale (integer). 1 = completely flat, 10 = extreme distress or joy
+closing_sentiment_delta — Did the customer's sentiment improve, worsen, or stay the same by call end? (improved/worsened/no change)
+expressed_satisfaction — Customer explicitly said they are satisfied or dissatisfied (satisfied/dissatisfied/not expressed)
+agent_mentioned_generic — Did the agent proactively suggest a generic medicine alternative? (yes/no)
+substitution_pitch_quality — If a generic was pitched, how well did the agent explain benefits, price difference, and equivalence? (poor/acceptable/strong/not applicable)
+customer_reaction_generic — Customer's reaction if generic was mentioned (accepted/refused/hesitant/not applicable)
+reason_resistance_generic — If customer refused generic, their stated reason in brief (or "not applicable")
+generic_switch_completed — Was a generic substitution actually completed on this call? (yes/no/not applicable)
+upsell_crosssell_opportunity — Was there a natural opportunity to suggest additional products or services? (yes/no)
+upsell_crosssell_attempt — Did the agent attempt an upsell or cross-sell? (yes/no)
+customer_referenced_digital — Did the customer mention the app, website, or any digital experience during the call? (yes/no)
+competitor_mentioned — Did the customer mention a competitor? (yes/no). If yes, name the competitor in parentheses
+greeting_quality — Quality of the agent's opening greeting, self-introduction, and stated purpose (poor/acceptable/strong)
+active_listening_signals — Did the agent show active listening (acknowledging, paraphrasing, confirming)? (present/weak/absent)
+empathy_markers — Did the agent use empathetic language? (yes/no). If yes, include one brief example in parentheses
+closing_quality — Quality of the agent's call closing (proper summary, next steps, polite sign-off) (poor/acceptable/strong)
+dead_air_filler_words — Notable dead air gaps or excessive filler words? (yes/no, specify agent/customer/both if yes)
+agent_handled_objection — Did the agent face and handle a customer objection? (yes/no). If yes, add quality: good/adequate/poor
+negative_agent_behavior_flags — Any negative agent behaviors observed (e.g. "rushed customer", "ignored concern", "None")
+agent_speech_rate — Inferred from transcript density and customer comprehension cues (too fast/appropriate/too slow/Unknown)
+
+STRICT RULES
+- Output ONLY the JSON object. No text before or after it.
+- Every key above must appear in the output, in the listed order.
+- Use only the allowed categorical values specified for each field.
+- For numeric fields (emotional_intensity_score), return integers only.
+- Do not add keys beyond the 33 listed above.
+- Do not nest objects inside attribute values — all values must be flat strings or integers.
+- Do not hallucinate timestamps — the transcript has no timestamps unless the transcription engine provided them.
+- If the transcript is too short or garbled to analyze meaningfully, return "Unknown" for all attributes and state this in the summary.`;
 
 // ═══ VIEW SWITCHING ═══
 function switchView(view) {
@@ -420,6 +543,16 @@ async function loadHistory() {
         renderHistory();
     } catch (err) { console.error(err); }
 }
+// Build superset of all attribute columns for history (inbound + outbound combined, no duplicates)
+function getAllHistoryCols() {
+    const seen = new Set();
+    const allAttrs = [];
+    [...INBOUND_ATTRS, ...OUTBOUND_ATTRS].forEach(k => {
+        if (!seen.has(k)) { seen.add(k); allAttrs.push(k); }
+    });
+    return [...META_COLS, ...allAttrs];
+}
+
 function renderHistory() {
     const table = document.getElementById('historyTable');
     const empty = document.getElementById('historyEmpty');
@@ -427,11 +560,9 @@ function renderHistory() {
     if (analyzed.length === 0) { table.classList.add('hidden'); empty.classList.remove('hidden'); return; }
     table.classList.remove('hidden'); empty.classList.add('hidden');
 
-    // Build headers
-    const allCols = [...META_COLS, ...ORDERED_ATTRS];
+    const allCols = getAllHistoryCols();
     document.getElementById('historyHead').innerHTML = '<tr>' + allCols.map(c => `<th>${c}</th>`).join('') + '</tr>';
 
-    // Build rows
     const tbody = document.getElementById('historyBody');
     tbody.innerHTML = '';
     analyzed.forEach(s => {
@@ -443,9 +574,14 @@ function renderHistory() {
         const tr = document.createElement('tr');
         allCols.forEach(col => {
             const td = document.createElement('td');
-            td.textContent = String(row[col] || '').substring(0, 200);
-            td.title = String(row[col] || '');
+            const val = row[col];
+            // For columns that don't apply to this call type, show empty instead of "Unknown"
+            const applicableAttrs = getAttrsForType(s.call_type);
+            const isApplicable = META_COLS.includes(col) || applicableAttrs.includes(col);
+            td.textContent = isApplicable ? String(val || '').substring(0, 200) : '';
+            td.title = isApplicable ? String(val || '') : 'N/A for ' + (s.call_type || 'this') + ' calls';
             if (col === 'filename') td.classList.add('cell-filename');
+            if (!isApplicable) td.style.opacity = '0.3';
             tr.appendChild(td);
         });
         tbody.appendChild(tr);
@@ -454,7 +590,7 @@ function renderHistory() {
 function copyAllHistory() {
     const analyzed = historyData.filter(s => s.has_analysis);
     if (analyzed.length === 0) return;
-    const allCols = [...META_COLS, ...ORDERED_ATTRS];
+    const allCols = getAllHistoryCols();
     const headers = allCols.join('\t');
     const rows = analyzed.map(s => {
         const row = buildFullRow({
@@ -462,7 +598,11 @@ function copyAllHistory() {
             date: s.timestamp?.slice(0,10) || '', duration_seconds: s.duration_seconds,
             word_count: s.word_count, transcript: s.full_text
         }, s.attributes);
-        return allCols.map(c => String(row[c] || '').replace(/\t/g,' ').replace(/\n/g,' ')).join('\t');
+        const applicableAttrs = getAttrsForType(s.call_type);
+        return allCols.map(c => {
+            const isApplicable = META_COLS.includes(c) || applicableAttrs.includes(c);
+            return isApplicable ? String(row[c] || '').replace(/\t/g,' ').replace(/\n/g,' ') : '';
+        }).join('\t');
     });
     navigator.clipboard.writeText(headers + '\n' + rows.join('\n')).then(() => {
         showStatus('success', `Copied ${analyzed.length} rows`); setTimeout(clearStatus, 2000);
