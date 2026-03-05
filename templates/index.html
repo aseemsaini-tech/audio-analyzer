@@ -3,719 +3,587 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audio Transcription & Analysis</title>
+    <title>Audio Analyzer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #0f1117;
-            --surface: #1a1d27;
-            --surface2: #232736;
-            --border: #2e3348;
-            --text: #e4e6f0;
-            --text-dim: #8b8fa3;
-            --accent: #6c63ff;
-            --accent-hover: #5a52e0;
-            --success: #2dd4a8;
-            --error: #f87171;
-            --warning: #fbbf24;
-            --radius: 12px;
+            --bg-base: #0A0A0B;
+            --bg-surface: #111113;
+            --bg-elevated: #18181B;
+            --bg-overlay: #1F1F23;
+            --border: rgba(255,255,255,0.06);
+            --border-focus: rgba(255,255,255,0.12);
+            --text-primary: #EEEFF1;
+            --text-secondary: #8A8F98;
+            --text-tertiary: #5C5F66;
+            --accent: #5E6AD2;
+            --accent-hover: #7179DB;
+            --accent-subtle: rgba(94,106,210,0.12);
+            --success: #4ADE80;
+            --success-subtle: rgba(74,222,128,0.1);
+            --error: #F87171;
+            --error-subtle: rgba(248,113,113,0.1);
+            --radius-sm: 5px;
+            --radius: 8px;
         }
-
         * { margin: 0; padding: 0; box-sizing: border-box; }
-
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-base); color: var(--text-primary);
+            min-height: 100vh; font-size: 13px; line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
         }
 
-        /* ─── Header ─── */
+        /* Header */
         .header {
-            padding: 20px 32px;
+            height: 44px; padding: 0 20px;
             border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            gap: 12px;
+            display: flex; align-items: center; gap: 10px;
+            background: var(--bg-surface);
         }
-        .header h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.3px; }
-        .header .badge {
-            font-size: 11px; background: var(--accent); color: white;
-            padding: 3px 8px; border-radius: 20px; font-weight: 500;
+        .header-logo { width: 18px; height: 18px; background: linear-gradient(135deg, #5E6AD2 0%, #8B5CF6 100%); border-radius: 4px; }
+        .header h1 { font-size: 13px; font-weight: 600; letter-spacing: -0.2px; }
+        .header-sep { color: var(--text-tertiary); font-weight: 400; }
+        .header-sub { font-weight: 400; color: var(--text-secondary); }
+
+        /* Nav Tabs */
+        .nav-tabs {
+            display: flex; gap: 0; background: var(--bg-surface);
+            border-bottom: 1px solid var(--border); padding: 0 20px;
+        }
+        .nav-tab {
+            padding: 8px 14px; font-size: 13px; font-weight: 500;
+            color: var(--text-tertiary); cursor: pointer; border: none;
+            background: none; font-family: inherit; position: relative;
+            transition: color 0.1s;
+        }
+        .nav-tab:hover { color: var(--text-secondary); }
+        .nav-tab.active { color: var(--text-primary); }
+        .nav-tab.active::after {
+            content: ''; position: absolute; bottom: -1px; left: 0; right: 0;
+            height: 2px; background: var(--accent); border-radius: 1px 1px 0 0;
         }
 
-        /* ─── Layout ─── */
-        .container {
-            display: grid; grid-template-columns: 1fr 1fr;
-            gap: 0; height: calc(100vh - 65px);
-        }
-        .panel { padding: 24px; overflow-y: auto; }
+        /* Views */
+        .view { display: none; height: calc(100vh - 80px); }
+        .view.active { display: grid; }
+        .view-analyze { grid-template-columns: 1fr 1fr; }
+        .view-history { display: none; flex-direction: column; overflow: hidden; }
+        .view-history.active { display: flex; }
+
+        .panel { padding: 20px; overflow-y: auto; }
         .panel-left { border-right: 1px solid var(--border); }
 
-        /* ─── Cards ─── */
-        .card {
-            background: var(--surface); border: 1px solid var(--border);
-            border-radius: var(--radius); padding: 20px; margin-bottom: 16px;
-        }
-        .card-title {
-            font-size: 13px; font-weight: 600; text-transform: uppercase;
-            letter-spacing: 0.5px; color: var(--text-dim); margin-bottom: 14px;
-        }
-        .card-title-row {
-            display: flex; align-items: center; justify-content: space-between;
-            margin-bottom: 14px;
-        }
-        .card-title-row .card-title { margin-bottom: 0; }
+        /* Card */
+        .card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+        .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+        .section-title { font-size: 12px; font-weight: 500; color: var(--text-secondary); letter-spacing: 0.02em; }
 
-        /* ─── Upload Zone ─── */
-        .upload-zone {
-            border: 2px dashed var(--border); border-radius: var(--radius);
-            padding: 40px 20px; text-align: center; cursor: pointer; transition: all 0.2s;
-        }
-        .upload-zone:hover, .upload-zone.dragover {
-            border-color: var(--accent); background: rgba(108, 99, 255, 0.05);
-        }
-        .upload-zone .icon { font-size: 36px; margin-bottom: 8px; }
-        .upload-zone p { color: var(--text-dim); font-size: 14px; }
+        /* Upload */
+        .upload-zone { border: 1px dashed rgba(255,255,255,0.1); border-radius: var(--radius); padding: 32px 16px; text-align: center; cursor: pointer; transition: all 0.15s; background: var(--bg-surface); }
+        .upload-zone:hover, .upload-zone.dragover { border-color: var(--accent); background: var(--accent-subtle); }
+        .upload-icon { width: 32px; height: 32px; margin: 0 auto 10px; border-radius: var(--radius-sm); background: var(--bg-overlay); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; }
+        .upload-icon svg { width: 16px; height: 16px; color: var(--text-secondary); }
+        .upload-zone p { color: var(--text-secondary); font-size: 13px; }
+        .upload-zone .hint { font-size: 11px; color: var(--text-tertiary); margin-top: 4px; }
         .upload-zone .filename { color: var(--accent); font-weight: 500; margin-top: 8px; }
         input[type="file"] { display: none; }
 
-        /* ─── Buttons ─── */
-        .btn {
-            display: inline-flex; align-items: center; gap: 8px;
-            padding: 10px 20px; border-radius: 8px; border: none;
-            font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.15s;
-        }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        /* Buttons */
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: var(--radius-sm); border: none; font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.1s; white-space: nowrap; }
+        .btn:disabled { opacity: 0.35; cursor: not-allowed; }
         .btn-primary { background: var(--accent); color: white; }
         .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
-        .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
-        .btn-outline:hover:not(:disabled) { background: var(--surface2); }
-        .btn-sm { padding: 6px 12px; font-size: 12px; }
-        .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
-        .btn-copy {
-            background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border);
-            padding: 5px 10px; border-radius: 6px; font-size: 11px; cursor: pointer;
-            transition: all 0.15s;
-        }
-        .btn-copy:hover { background: var(--accent); color: white; border-color: var(--accent); }
-        .btn-copy.copied { background: var(--success); color: white; border-color: var(--success); }
+        .btn-secondary { background: var(--bg-overlay); color: var(--text-primary); border: 1px solid var(--border); }
+        .btn-secondary:hover:not(:disabled) { background: var(--bg-elevated); border-color: var(--border-focus); }
+        .btn-ghost { background: transparent; color: var(--text-secondary); height: 26px; padding: 0 8px; font-size: 12px; border: none; font-family: inherit; cursor: pointer; border-radius: 3px; }
+        .btn-ghost:hover { color: var(--text-primary); background: rgba(255,255,255,0.04); }
+        .btn-ghost.copied { color: var(--success); }
+        .btn-group { display: flex; gap: 6px; }
 
-        /* ─── Call Type Toggle ─── */
-        .call-type-toggle {
-            display: flex; gap: 0; border-radius: 8px; overflow: hidden;
-            border: 1px solid var(--border); margin-bottom: 14px;
-        }
-        .call-type-btn {
-            flex: 1; padding: 10px 16px; text-align: center; cursor: pointer;
-            font-size: 13px; font-weight: 500; background: var(--surface2);
-            color: var(--text-dim); border: none; transition: all 0.15s;
-        }
-        .call-type-btn.active {
-            background: var(--accent); color: white;
-        }
-        .call-type-btn:not(.active):hover { background: var(--border); }
+        /* Segmented */
+        .segmented { display: inline-flex; background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 2px; gap: 2px; margin-bottom: 12px; }
+        .segmented-btn { padding: 5px 14px; border-radius: 4px; border: none; background: transparent; color: var(--text-secondary); font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.1s; }
+        .segmented-btn.active { background: var(--bg-elevated); color: var(--text-primary); box-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+        .segmented-btn:not(.active):hover { color: var(--text-primary); }
 
-        /* ─── Textarea ─── */
-        textarea {
-            width: 100%; min-height: 160px; background: var(--surface2);
-            border: 1px solid var(--border); border-radius: 8px; padding: 14px;
-            color: var(--text); font-family: 'SF Mono', 'Fira Code', monospace;
-            font-size: 13px; line-height: 1.6; resize: vertical;
-        }
+        /* Textarea */
+        textarea { width: 100%; min-height: 140px; background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; color: var(--text-primary); font-family: 'SF Mono', 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.6; resize: vertical; }
         textarea:focus { outline: none; border-color: var(--accent); }
-        textarea::placeholder { color: var(--text-dim); }
+        textarea::placeholder { color: var(--text-tertiary); }
 
-        /* ─── Select ─── */
-        select {
-            background: var(--surface2); border: 1px solid var(--border);
-            border-radius: 8px; padding: 8px 12px; color: var(--text);
-            font-size: 13px; cursor: pointer;
-        }
+        /* Select */
+        select { height: 32px; background: var(--bg-overlay); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0 28px 0 10px; color: var(--text-primary); font-family: inherit; font-size: 12px; cursor: pointer; -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B6F76' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; }
         select:focus { outline: none; border-color: var(--accent); }
 
-        /* ─── Transcript Display ─── */
-        .transcript-box {
-            background: var(--surface2); border-radius: 8px; padding: 16px;
-            max-height: 300px; overflow-y: auto; font-size: 14px; line-height: 1.7;
-        }
-        .utterance {
-            margin-bottom: 12px; padding-bottom: 12px;
-            border-bottom: 1px solid var(--border);
-        }
+        /* Transcript */
+        .transcript-box { background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; max-height: 280px; overflow-y: auto; font-size: 13px; line-height: 1.65; }
+        .utterance { padding: 8px 0; border-bottom: 1px solid var(--border); }
         .utterance:last-child { border-bottom: none; }
-        .speaker-label { font-weight: 600; color: var(--accent); font-size: 12px; margin-bottom: 2px; }
+        .utterance:first-child { padding-top: 0; }
+        .speaker-label { font-size: 11px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 2px; }
 
-        /* ─── Analysis Results ─── */
-        .summary-box {
-            background: var(--surface2); border-radius: 8px; padding: 16px;
-            font-size: 14px; line-height: 1.7; white-space: pre-wrap;
-        }
-        .attr-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        .attr-table th, .attr-table td {
-            padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border);
-        }
-        .attr-table th {
-            color: var(--text-dim); font-weight: 600; font-size: 11px;
-            text-transform: uppercase; letter-spacing: 0.5px;
-        }
-        .attr-table td:first-child {
-            font-family: 'SF Mono', monospace; color: var(--accent); font-size: 12px;
-        }
+        /* Stats */
+        .stats { display: flex; gap: 8px; margin-bottom: 12px; }
+        .stat { flex: 1; background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; }
+        .stat-label { font-size: 11px; color: var(--text-tertiary); font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; }
+        .stat-value { font-size: 18px; font-weight: 600; margin-top: 2px; letter-spacing: -0.5px; }
 
-        /* ─── Status / Progress ─── */
-        .status-bar {
-            display: flex; align-items: center; gap: 10px;
-            padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 16px;
-        }
-        .status-bar.info { background: rgba(108,99,255,0.1); color: var(--accent); }
-        .status-bar.success { background: rgba(45,212,168,0.1); color: var(--success); }
-        .status-bar.error { background: rgba(248,113,113,0.1); color: var(--error); }
+        /* Summary & Attrs */
+        .summary-box { background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; font-size: 13px; line-height: 1.65; white-space: pre-wrap; color: var(--text-secondary); }
+        .attr-table { width: 100%; border-collapse: collapse; }
+        .attr-table th { padding: 6px 12px; text-align: left; font-size: 11px; font-weight: 500; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); background: var(--bg-base); }
+        .attr-table td { padding: 8px 12px; font-size: 13px; border-bottom: 1px solid var(--border); }
+        .attr-table tr:last-child td { border-bottom: none; }
+        .attr-table td:first-child { font-family: 'SF Mono', monospace; font-size: 12px; color: var(--text-secondary); }
+        .attr-table td:last-child { color: var(--text-primary); }
+        .attr-table-wrap { background: var(--bg-base); border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; max-height: 400px; overflow-y: auto; }
 
-        .spinner {
-            width: 16px; height: 16px; border: 2px solid transparent;
-            border-top-color: currentColor; border-radius: 50%;
-            animation: spin 0.6s linear infinite;
-        }
+        /* Status */
+        .status-bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: var(--radius-sm); font-size: 13px; margin-bottom: 12px; border: 1px solid; }
+        .status-bar.info { background: var(--accent-subtle); color: var(--accent); border-color: rgba(94,106,210,0.2); }
+        .status-bar.success { background: var(--success-subtle); color: var(--success); border-color: rgba(74,222,128,0.2); }
+        .status-bar.error { background: var(--error-subtle); color: var(--error); border-color: rgba(248,113,113,0.2); }
+        .spinner { width: 14px; height: 14px; border: 1.5px solid transparent; border-top-color: currentColor; border-radius: 50%; animation: spin 0.6s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* ─── Stats Row ─── */
-        .stats { display: flex; gap: 16px; margin-bottom: 16px; }
-        .stat { background: var(--surface2); padding: 10px 14px; border-radius: 8px; flex: 1; }
-        .stat-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; }
-        .stat-value { font-size: 18px; font-weight: 600; margin-top: 4px; }
-
+        .prompt-actions { display: flex; align-items: center; gap: 4px; margin-top: 8px; }
+        .prompt-link { font-size: 12px; color: var(--text-tertiary); cursor: pointer; padding: 3px 6px; border-radius: 3px; }
+        .prompt-link:hover { color: var(--text-secondary); background: rgba(255,255,255,0.04); }
+        .toolbar { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+        .label { font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 6px; }
         .hidden { display: none; }
 
-        /* ─── Edit prompt link ─── */
-        .edit-link {
-            font-size: 12px; color: var(--accent); cursor: pointer;
-            text-decoration: underline; margin-left: 8px;
+        /* History Table */
+        .history-toolbar { padding: 12px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: var(--bg-surface); }
+        .history-scroll { flex: 1; overflow: auto; }
+        .history-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .history-table th {
+            padding: 8px 12px; text-align: left; font-size: 11px; font-weight: 500;
+            color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.04em;
+            border-bottom: 1px solid var(--border); background: var(--bg-surface);
+            position: sticky; top: 0; z-index: 1;
         }
-        .edit-link:hover { color: var(--accent-hover); }
+        .history-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--text-secondary); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .history-table tr:hover td { background: var(--bg-elevated); }
+        .history-table .cell-filename { color: var(--text-primary); font-weight: 500; }
+        .history-table .cell-type { font-size: 11px; padding: 2px 8px; border-radius: 3px; background: var(--bg-overlay); color: var(--text-secondary); }
+        .history-empty { padding: 60px 20px; text-align: center; color: var(--text-tertiary); }
 
-        /* ─── Scrollbar ─── */
-        ::-webkit-scrollbar { width: 6px; }
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <h1>Audio Transcription & Analysis</h1>
-    <span class="badge">AssemblyAI + Claude</span>
+    <div class="header-logo"></div>
+    <h1>Audio Analyzer</h1>
+    <span class="header-sep">/</span>
+    <span class="header-sub">Transcription & Analysis</span>
 </div>
 
-<div class="container">
-    <!-- ─── LEFT PANEL ─── -->
-    <div class="panel panel-left">
+<!-- Nav -->
+<div class="nav-tabs">
+    <button class="nav-tab active" onclick="switchView('analyze')">Analyze</button>
+    <button class="nav-tab" onclick="switchView('history')">History</button>
+</div>
 
-        <!-- Upload -->
+<!-- ═══ ANALYZE VIEW ═══ -->
+<div class="view view-analyze active" id="viewAnalyze">
+    <div class="panel panel-left">
         <div class="card">
-            <div class="card-title">1. Upload Audio</div>
+            <div class="section-header"><span class="section-title">Upload Audio</span></div>
             <div class="upload-zone" id="uploadZone" onclick="document.getElementById('audioInput').click()">
-                <div class="icon">🎙</div>
-                <p>Drop audio file here or click to browse</p>
-                <p style="font-size:12px; margin-top:4px; color:var(--text-dim)">
-                    MP3, WAV, M4A, FLAC, OGG, WebM
-                </p>
+                <div class="upload-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+                <p>Drop audio file or click to browse</p>
+                <p class="hint">MP3, WAV, M4A, FLAC, OGG, WebM</p>
                 <div class="filename hidden" id="selectedFile"></div>
             </div>
             <input type="file" id="audioInput" accept="audio/*,.mp3,.wav,.m4a,.flac,.ogg,.webm">
-            <div style="margin-top:14px">
+            <div style="margin-top:12px">
                 <button class="btn btn-primary" id="transcribeBtn" disabled onclick="transcribe()">
-                    Transcribe Audio
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Transcribe
                 </button>
             </div>
         </div>
 
-        <!-- Transcript -->
         <div class="card hidden" id="transcriptCard">
-            <div class="card-title-row">
-                <div class="card-title">Transcript</div>
-                <button class="btn-copy" onclick="copyTranscript(this)">Copy to Clipboard</button>
+            <div class="section-header">
+                <span class="section-title">Transcript</span>
+                <button class="btn-ghost" onclick="copyTranscript(this)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy</button>
             </div>
             <div class="stats" id="transcriptStats"></div>
             <div class="transcript-box" id="transcriptBox"></div>
         </div>
 
-        <!-- Analysis Prompt -->
         <div class="card hidden" id="promptCard">
-            <div class="card-title">2. Call Type & Analysis Prompt</div>
-
-            <!-- Call Type Toggle -->
-            <div class="call-type-toggle">
-                <button class="call-type-btn active" id="btnInbound" onclick="setCallType('inbound')">
-                    Inbound Call
-                </button>
-                <button class="call-type-btn" id="btnOutbound" onclick="setCallType('outbound')">
-                    Outbound Call
-                </button>
+            <div class="section-header"><span class="section-title">Analysis Prompt</span></div>
+            <div class="segmented">
+                <button class="segmented-btn active" id="btnInbound" onclick="setCallType('inbound')">Inbound Call</button>
+                <button class="segmented-btn" id="btnOutbound" onclick="setCallType('outbound')">Outbound Call</button>
             </div>
-
             <textarea id="analysisPrompt"></textarea>
-
-            <div style="margin-top:8px; display:flex; align-items:center; gap:8px;">
-                <span class="edit-link" onclick="saveCurrentPrompt()">Save prompt as default</span>
-                <span class="edit-link" onclick="resetPrompt()">Reset to default</span>
+            <div class="prompt-actions">
+                <span class="prompt-link" onclick="saveCurrentPrompt()">Save as default</span>
+                <span style="color:var(--text-tertiary)">|</span>
+                <span class="prompt-link" onclick="resetPrompt()">Reset</span>
             </div>
-
-            <div style="margin-top:12px; display:flex; align-items:center; gap:12px">
+            <div class="toolbar">
                 <button class="btn btn-primary" id="analyzeBtn" onclick="analyze()">
-                    Run Analysis
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Analyze
                 </button>
                 <select id="modelSelect">
-                    <option value="claude-sonnet-4-6">Claude Sonnet 4.6 (latest)</option>
-                    <option value="claude-sonnet-4-5-20250929">Claude Sonnet 4.5</option>
-                    <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (faster)</option>
-                    <option value="claude-opus-4-5-20251101">Claude Opus 4.5 (best)</option>
+                    <option value="claude-sonnet-4-6">Sonnet 4.6</option>
+                    <option value="claude-sonnet-4-5-20250929">Sonnet 4.5</option>
+                    <option value="claude-haiku-4-5-20251001">Haiku 4.5</option>
+                    <option value="claude-opus-4-5-20251101">Opus 4.5</option>
                 </select>
             </div>
         </div>
-
     </div>
 
-    <!-- ─── RIGHT PANEL ─── -->
     <div class="panel">
-
-        <!-- Status -->
         <div id="statusArea"></div>
 
-        <!-- Analysis Results -->
-        <div class="card hidden" id="analysisCard">
-            <div class="card-title">Analysis Results</div>
-            <div id="summarySection" class="hidden">
-                <h3 style="font-size:14px; margin-bottom:8px; font-weight:600;">Summary</h3>
-                <div class="summary-box" id="summaryBox"></div>
+        <!-- Full output table (metadata + transcript + attributes) -->
+        <div class="card hidden" id="fullOutputCard">
+            <div class="section-header">
+                <span class="section-title">Complete Output Row</span>
+                <button class="btn-ghost" onclick="copyFullRow(this)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy full row for Sheets</button>
             </div>
-            <div id="attrsSection" class="hidden" style="margin-top:20px">
-                <div class="card-title-row">
-                    <h3 style="font-size:14px; font-weight:600;">Extracted Attributes</h3>
-                    <button class="btn-copy" onclick="copyAttributesRow(this)">Copy Row for Google Sheets</button>
-                </div>
-                <table class="attr-table" id="attrsTable">
-                    <thead><tr><th>Attribute</th><th>Value</th></tr></thead>
-                    <tbody id="attrsBody"></tbody>
+            <div class="attr-table-wrap">
+                <table class="attr-table" id="fullOutputTable">
+                    <thead><tr id="fullOutputHead"></tr></thead>
+                    <tbody><tr id="fullOutputBody"></tr></tbody>
                 </table>
             </div>
         </div>
 
-        <!-- Exports -->
-        <div class="card hidden" id="exportCard">
-            <div class="card-title">3. Export</div>
-            <div class="btn-group">
-                <button class="btn btn-outline" onclick="exportDocx()">
-                    Download DOCX Transcript
-                </button>
-                <button class="btn btn-outline" id="csvBtn" onclick="exportCsv()" disabled>
-                    Download CSV Attributes
-                </button>
-            </div>
+        <div class="card hidden" id="analysisCard">
+            <div class="section-header"><span class="section-title">Summary</span></div>
+            <div class="summary-box" id="summaryBox"></div>
         </div>
 
+        <div class="card hidden" id="exportCard">
+            <div class="section-header"><span class="section-title">Export</span></div>
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="exportDocx()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> DOCX</button>
+                <button class="btn btn-secondary" id="csvBtn" onclick="exportCsv()" disabled><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/></svg> CSV</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ HISTORY VIEW ═══ -->
+<div class="view view-history" id="viewHistory">
+    <div class="history-toolbar">
+        <span class="section-title">Previously Analyzed</span>
+        <div class="btn-group">
+            <button class="btn btn-ghost" onclick="copyAllHistory()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy all rows</button>
+            <button class="btn btn-secondary" onclick="loadHistory()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Refresh</button>
+        </div>
+    </div>
+    <div class="history-scroll" id="historyScroll">
+        <div class="history-empty" id="historyEmpty">No analyses yet. Transcribe and analyze an audio file to see history here.</div>
+        <table class="history-table hidden" id="historyTable">
+            <thead id="historyHead"></thead>
+            <tbody id="historyBody"></tbody>
+        </table>
     </div>
 </div>
 
 <script>
-    let currentSessionId = null;
-    let currentCallType = 'inbound';
-    let lastTranscriptData = null;
-    let lastAttributesData = null;
+let currentSessionId = null;
+let currentCallType = 'inbound';
+let lastTranscriptData = null;
+let lastFullRow = null;
+let historyData = [];
 
-    // ─── Default prompt (shared for both call types) ───
-    const DEFAULT_PROMPT = `ROLE DEFINITION
-You are an enterprise-grade AI system for inbound CRM call analytics.
-Your function is to analyze batches of inbound CRM calls (orders, queries, or complaints) and generate a row-wise, structured output suitable for direct ingestion into Google Sheets. Also output a document that contains transcription of all input audios that you have used for analysis
-Your operating priorities, in descending order, are:
-* Accuracy
-* Completeness
-* Evidence-based reasoning
-* Non-hallucination
-* Structural consistency across the entire batch
+// ═══ ORDERED ATTRIBUTE KEYS (consistent across all runs) ═══
+const ORDERED_ATTRS = [
+    "wait_hold_time_instances","repeat_call_flag","primary_intent","multi_intent_flag",
+    "call_preventable","secondary_hidden_intent","intent_recognized_correctly","complaint_type",
+    "complaint_severity","fcr","resolution_promised","unresolved_intent_at_end",
+    "overall_sentiment","sentiment_arc","emotional_peak_moment","specific_emotions_detected",
+    "emotional_intensity_score","closing_sentiment_delta","expressed_satisfaction",
+    "agent_mentioned_generic","customer_reaction_generic","reason_resistance_generic",
+    "generic_switch_completed","upsell_crosssell_opportunity","upsell_crosssell_attempt",
+    "greeting_quality","active_listening_signals","empathy_markers","closing_quality",
+    "dead_air_filler_words","agent_handled_objection","negative_agent_behavior_flags",
+    "agent_speech_rate","background_noise_agent"
+];
+const META_COLS = ["filename","call_type","date","duration_seconds","word_count","transcript"];
 
-INPUT EXPECTATIONS
-* Audio recordings of inbound CRM calls
-* Each call represents a unique customer interaction
-* Calls may relate to prior interactions within a 7-day window
+function buildFullRow(metadata, attributes) {
+    const row = {};
+    META_COLS.forEach(k => { row[k] = metadata[k] || ''; });
+    ORDERED_ATTRS.forEach(k => { row[k] = attributes[k] || 'Unknown'; });
+    return row;
+}
 
-MANDATORY PRE-PROCESSING
-TRANSCRIPTION REQUIREMENTS
-If audio is provided, perform transcription internally before analysis
-* Use strict speaker labels:
-   * Customer:
-   * Agent:
-* Do not merge, paraphrase, summarize, or reinterpret speech
-* Preserve:
-   * Pauses
-   * Interruptions
-   * Hesitations
-   * Emotional cues (e.g., sighs, raised voice, prolonged silence)
-* If speaker identity is unclear, label as:
-   * Unknown speaker
-* Do not resolve ambiguity by assumption.
+// ═══ PROMPTS ═══
+const INBOUND_PROMPT = `You are an enterprise-grade AI system for inbound CRM call analytics.
 
-EVIDENCE STANDARD
-Every analytical output must be directly supported by explicit evidence in the call
-If evidence is insufficient or ambiguous, return:
-Unknown
-Not determinable from call
-Insufficient signal
-Never infer, interpolate, or guess.
+Analyze the provided transcript and return a JSON object with exactly two keys:
+1. "summary": 2-3 sentence overview of the call.
+2. "attributes": An object with EXACTLY these keys in this order (use snake_case). If evidence is insufficient, use "Unknown":
 
-OUTPUT FORMAT REQUIREMENTS
-* Output only a Google Sheets-ready table
-* One row per call
-* Column names must exactly match the defined attributes
-* Use consistent categorical values
-* Numeric fields must contain numeric values only
-* Avoid free-text unless explicitly required
-* No commentary, explanations, or summaries are permitted in the output.
+wait_hold_time_instances, repeat_call_flag, primary_intent, multi_intent_flag, call_preventable, secondary_hidden_intent, intent_recognized_correctly, complaint_type, complaint_severity, fcr, resolution_promised, unresolved_intent_at_end, overall_sentiment, sentiment_arc, emotional_peak_moment, specific_emotions_detected, emotional_intensity_score, closing_sentiment_delta, expressed_satisfaction, agent_mentioned_generic, customer_reaction_generic, reason_resistance_generic, generic_switch_completed, upsell_crosssell_opportunity, upsell_crosssell_attempt, greeting_quality, active_listening_signals, empathy_markers, closing_quality, dead_air_filler_words, agent_handled_objection, negative_agent_behavior_flags, agent_speech_rate, background_noise_agent
 
-REQUIRED ANALYSIS ATTRIBUTES (COLUMNS)
-* Wait / hold time instances
-* Repeat call flag (same issue < 7 days)
-* Primary intent
-* Multi-intent flag (yes/no)
-* Was this call preventable? (yes/no/unknown)
-* Secondary / hidden intent
-* Intent recognized correctly by agent (yes/no/partial/unknown)
-* Complaint type
-* Complaint severity (mild / serious / urgent)
-* First-contact resolution (FCR) (yes/no/partial)
-* Resolution promised (yes/no, timeline given or not)
-* Unresolved intent at end of call (yes/no)
-* Overall call sentiment (positive / neutral / negative)
-* Sentiment arc (opening > mid > closing)
-* Emotional peak moment (timestamp or call phase)
-* Specific emotions detected
-* Emotional intensity score (1-10)
-* Closing sentiment delta (improved / worsened / no change)
-* Expressed satisfaction / dissatisfaction (explicit yes/no)
-* Did agent proactively mention a generic? (yes/no)
-* Customer reaction to generic suggestion
-* Reason for resistance to generic
-* Was a generic switch completed on this call? (yes/no)
-* Upsell / cross-sell opportunity (yes/no)
-* Upsell / cross-sell attempt by agent (yes/no)
-* Greeting quality & script adherence (poor / acceptable / strong)
-* Active listening signals (present / weak / absent)
-* Empathy markers used (yes/no, specify briefly)
-* Closing quality (poor / acceptable / strong)
-* Dead air / excessive filler words (yes/no, agent/customer/both)
-* Agent handled objection (yes/no + quality)
-* Negative agent behavior flags
-* Agent speech rate (too fast / appropriate / too slow)
-* Background noise on agent side (none / mild / disruptive)
+Rules:
+- Every output must be supported by explicit evidence in the transcript
+- Never infer, interpolate, or guess. When uncertain, output "Unknown"
+- Use strict categorical values: yes/no, positive/neutral/negative, poor/acceptable/strong, mild/serious/urgent, present/weak/absent, 1-10 for scores
+- Do not add extra keys beyond the list above
+- Respond ONLY with valid JSON, no markdown fences`;
 
-NEGATIVE BEHAVIOR CONSTRAINTS (ANTI-HALLUCINATION)
-You must NOT:
-* Infer customer intent without explicit verbal evidence
-* Assume emotional states without tonal or linguistic indicators
-* Guess timestamps, durations, or emotional peaks
-* Normalize, soften, or excuse agent misconduct
-* Mark satisfaction unless explicitly expressed
-* Mark FCR as "yes" unless the issue is fully resolved during the call
-* Assume repeat calls without direct confirmation or metadata
-* Attribute causality or blame without explicit evidence
-* Use speculative language such as "likely", "appears", or "seems"
-* When uncertain, output Unknown.
+const OUTBOUND_PROMPT = `You are an enterprise-grade AI system for outbound CRM call analytics.
 
-QUALITY ASSURANCE CHECKS (MANDATORY)
-Before final output:
-* Verify speaker attribution accuracy
-* Validate sentiment alignment with transcript content
-* Confirm resolution status versus promise language
-* Ensure intent classification matches agent response
-* Confirm all columns are populated
+Analyze the provided transcript and return a JSON object with exactly two keys:
+1. "summary": 2-3 sentence overview of the call.
+2. "attributes": An object with EXACTLY these keys in this order (use snake_case). If evidence is insufficient, use "Unknown":
 
-SELF-REGULATION DIRECTIVES
-You must:
-* Operate deliberately and conservatively
-* Optimize for audit-grade defensibility
-* Prefer "unknown" over incorrect certainty
-* Assume outputs may be used for:
-* Compliance reviews
-* Agent performance management
-* Executive reporting
-* Helpfulness is defined by precision, not completion.
+wait_hold_time_instances, repeat_call_flag, primary_intent, multi_intent_flag, call_preventable, secondary_hidden_intent, intent_recognized_correctly, complaint_type, complaint_severity, fcr, resolution_promised, unresolved_intent_at_end, overall_sentiment, sentiment_arc, emotional_peak_moment, specific_emotions_detected, emotional_intensity_score, closing_sentiment_delta, expressed_satisfaction, agent_mentioned_generic, customer_reaction_generic, reason_resistance_generic, generic_switch_completed, upsell_crosssell_opportunity, upsell_crosssell_attempt, greeting_quality, active_listening_signals, empathy_markers, closing_quality, dead_air_filler_words, agent_handled_objection, negative_agent_behavior_flags, agent_speech_rate, background_noise_agent
 
-FINAL OUTPUT RULE
-Produce only the completed Google Sheets-ready table for the full batch.
-Produce a document that contains transcription of all input audios uploaded for analysis
-No additional text is permitted.`;
+Rules:
+- Every output must be supported by explicit evidence in the transcript
+- Never infer, interpolate, or guess. When uncertain, output "Unknown"
+- Use strict categorical values: yes/no, positive/neutral/negative, poor/acceptable/strong, mild/serious/urgent, present/weak/absent, 1-10 for scores
+- Do not add extra keys beyond the list above
+- Respond ONLY with valid JSON, no markdown fences`;
 
-    // ─── Saved prompts (localStorage) ───
-    function getStorageKey(type) { return `callPrompt_${type}`; }
-
-    function getSavedPrompt(type) {
-        return localStorage.getItem(getStorageKey(type)) || DEFAULT_PROMPT;
+// ═══ VIEW SWITCHING ═══
+function switchView(view) {
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    if (view === 'history') {
+        document.querySelectorAll('.nav-tab')[1].classList.add('active');
+        document.getElementById('viewHistory').classList.add('active');
+        loadHistory();
+    } else {
+        document.querySelectorAll('.nav-tab')[0].classList.add('active');
+        document.getElementById('viewAnalyze').classList.add('active');
     }
+}
 
-    function saveCurrentPrompt() {
-        const prompt = document.getElementById('analysisPrompt').value;
-        localStorage.setItem(getStorageKey(currentCallType), prompt);
-        showStatus('success', `Default prompt saved for ${currentCallType} calls.`);
-        setTimeout(clearStatus, 2000);
-    }
+// ═══ PROMPTS STORAGE ═══
+function getStorageKey(type) { return `callPrompt_${type}`; }
+function getDefaultPrompt(type) { return type === 'outbound' ? OUTBOUND_PROMPT : INBOUND_PROMPT; }
+function getSavedPrompt(type) { return localStorage.getItem(getStorageKey(type)) || getDefaultPrompt(type); }
+function saveCurrentPrompt() {
+    localStorage.setItem(getStorageKey(currentCallType), document.getElementById('analysisPrompt').value);
+    showStatus('success', 'Prompt saved'); setTimeout(clearStatus, 2000);
+}
+function resetPrompt() {
+    localStorage.removeItem(getStorageKey(currentCallType));
+    document.getElementById('analysisPrompt').value = getDefaultPrompt(currentCallType);
+    showStatus('success', 'Prompt reset'); setTimeout(clearStatus, 2000);
+}
+function setCallType(type) {
+    localStorage.setItem(getStorageKey(currentCallType), document.getElementById('analysisPrompt').value);
+    currentCallType = type;
+    document.getElementById('btnInbound').classList.toggle('active', type === 'inbound');
+    document.getElementById('btnOutbound').classList.toggle('active', type === 'outbound');
+    document.getElementById('analysisPrompt').value = getSavedPrompt(type);
+}
 
-    function resetPrompt() {
-        localStorage.removeItem(getStorageKey(currentCallType));
-        document.getElementById('analysisPrompt').value = DEFAULT_PROMPT;
-        showStatus('success', `Prompt reset to default for ${currentCallType} calls.`);
-        setTimeout(clearStatus, 2000);
-    }
+// ═══ COPY HELPERS ═══
+function flashCopied(btn) {
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Copied';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('copied'); }, 1500);
+}
+function copyTranscript(btn) {
+    if (!lastTranscriptData) return;
+    let text = lastTranscriptData.utterances?.length > 0
+        ? lastTranscriptData.utterances.map(u => `Speaker ${u.speaker}: ${u.text}`).join('\n\n')
+        : (lastTranscriptData.text || '');
+    navigator.clipboard.writeText(text).then(() => flashCopied(btn));
+}
+function copyFullRow(btn) {
+    if (!lastFullRow) return;
+    const keys = Object.keys(lastFullRow);
+    const headers = keys.join('\t');
+    const values = keys.map(k => String(lastFullRow[k]).replace(/\t/g,' ').replace(/\n/g,' ')).join('\t');
+    navigator.clipboard.writeText(headers + '\n' + values).then(() => flashCopied(btn));
+}
 
-    function setCallType(type) {
-        // Save current prompt before switching
-        localStorage.setItem(getStorageKey(currentCallType), document.getElementById('analysisPrompt').value);
+// ═══ HISTORY ═══
+async function loadHistory() {
+    try {
+        const res = await fetch('/api/sessions');
+        historyData = await res.json();
+        renderHistory();
+    } catch (err) { console.error(err); }
+}
+function renderHistory() {
+    const table = document.getElementById('historyTable');
+    const empty = document.getElementById('historyEmpty');
+    const analyzed = historyData.filter(s => s.has_analysis);
+    if (analyzed.length === 0) { table.classList.add('hidden'); empty.classList.remove('hidden'); return; }
+    table.classList.remove('hidden'); empty.classList.add('hidden');
 
-        currentCallType = type;
-        document.getElementById('btnInbound').classList.toggle('active', type === 'inbound');
-        document.getElementById('btnOutbound').classList.toggle('active', type === 'outbound');
-        document.getElementById('analysisPrompt').value = getSavedPrompt(type);
-    }
+    // Build headers
+    const allCols = [...META_COLS, ...ORDERED_ATTRS];
+    document.getElementById('historyHead').innerHTML = '<tr>' + allCols.map(c => `<th>${c}</th>`).join('') + '</tr>';
 
-    // ─── Copy to Clipboard helpers ───
-    function flashCopied(btn) {
-        const orig = btn.textContent;
-        btn.textContent = 'Copied!';
-        btn.classList.add('copied');
-        setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1500);
-    }
-
-    function copyTranscript(btn) {
-        if (!lastTranscriptData) return;
-        let text = '';
-        if (lastTranscriptData.utterances && lastTranscriptData.utterances.length > 0) {
-            text = lastTranscriptData.utterances.map(u => `Speaker ${u.speaker}: ${u.text}`).join('\n\n');
-        } else {
-            text = lastTranscriptData.text || '';
-        }
-        navigator.clipboard.writeText(text).then(() => flashCopied(btn));
-    }
-
-    function copyAttributesRow(btn) {
-        if (!lastAttributesData) return;
-        // Tab-separated values (paste directly into Google Sheets)
-        const headers = Object.keys(lastAttributesData).join('\t');
-        const values = Object.values(lastAttributesData).map(v => String(v)).join('\t');
-        const row = headers + '\n' + values;
-        navigator.clipboard.writeText(row).then(() => flashCopied(btn));
-    }
-
-    // ─── Drag & Drop ───
-    const zone = document.getElementById('uploadZone');
-    const fileInput = document.getElementById('audioInput');
-
-    ['dragenter','dragover'].forEach(e => zone.addEventListener(e, ev => {
-        ev.preventDefault(); zone.classList.add('dragover');
-    }));
-    ['dragleave','drop'].forEach(e => zone.addEventListener(e, ev => {
-        ev.preventDefault(); zone.classList.remove('dragover');
-    }));
-    zone.addEventListener('drop', ev => {
-        const file = ev.dataTransfer.files[0];
-        if (file) { fileInput.files = ev.dataTransfer.files; handleFileSelect(file); }
+    // Build rows
+    const tbody = document.getElementById('historyBody');
+    tbody.innerHTML = '';
+    analyzed.forEach(s => {
+        const row = buildFullRow({
+            filename: s.filename, call_type: s.call_type,
+            date: s.timestamp?.slice(0,10) || '', duration_seconds: s.duration_seconds,
+            word_count: s.word_count, transcript: s.full_text
+        }, s.attributes);
+        const tr = document.createElement('tr');
+        allCols.forEach(col => {
+            const td = document.createElement('td');
+            td.textContent = String(row[col] || '').substring(0, 200);
+            td.title = String(row[col] || '');
+            if (col === 'filename') td.classList.add('cell-filename');
+            tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
     });
-    fileInput.addEventListener('change', () => {
-        if (fileInput.files[0]) handleFileSelect(fileInput.files[0]);
+}
+function copyAllHistory() {
+    const analyzed = historyData.filter(s => s.has_analysis);
+    if (analyzed.length === 0) return;
+    const allCols = [...META_COLS, ...ORDERED_ATTRS];
+    const headers = allCols.join('\t');
+    const rows = analyzed.map(s => {
+        const row = buildFullRow({
+            filename: s.filename, call_type: s.call_type,
+            date: s.timestamp?.slice(0,10) || '', duration_seconds: s.duration_seconds,
+            word_count: s.word_count, transcript: s.full_text
+        }, s.attributes);
+        return allCols.map(c => String(row[c] || '').replace(/\t/g,' ').replace(/\n/g,' ')).join('\t');
     });
+    navigator.clipboard.writeText(headers + '\n' + rows.join('\n')).then(() => {
+        showStatus('success', `Copied ${analyzed.length} rows`); setTimeout(clearStatus, 2000);
+    });
+}
 
-    function handleFileSelect(file) {
-        const el = document.getElementById('selectedFile');
-        const sizeMB = (file.size / (1024*1024)).toFixed(1);
-        el.textContent = `${file.name} (${sizeMB} MB)`;
-        el.classList.remove('hidden');
-        document.getElementById('transcribeBtn').disabled = false;
-    }
+// ═══ DRAG & DROP ═══
+const zone = document.getElementById('uploadZone');
+const fileInput = document.getElementById('audioInput');
+['dragenter','dragover'].forEach(e => zone.addEventListener(e, ev => { ev.preventDefault(); zone.classList.add('dragover'); }));
+['dragleave','drop'].forEach(e => zone.addEventListener(e, ev => { ev.preventDefault(); zone.classList.remove('dragover'); }));
+zone.addEventListener('drop', ev => { const f = ev.dataTransfer.files[0]; if (f) { fileInput.files = ev.dataTransfer.files; handleFileSelect(f); } });
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFileSelect(fileInput.files[0]); });
+function handleFileSelect(file) {
+    const el = document.getElementById('selectedFile');
+    el.textContent = `${file.name} (${(file.size/(1024*1024)).toFixed(1)} MB)`;
+    el.classList.remove('hidden');
+    document.getElementById('transcribeBtn').disabled = false;
+}
 
-    // ─── Status Helpers ───
-    function showStatus(type, msg, spinner = false) {
-        const area = document.getElementById('statusArea');
-        area.innerHTML = `<div class="status-bar ${type}">
-            ${spinner ? '<div class="spinner"></div>' : ''}
-            ${msg}
-        </div>`;
-    }
-    function clearStatus() {
-        document.getElementById('statusArea').innerHTML = '';
-    }
+// ═══ STATUS ═══
+function showStatus(type, msg, spinner = false) {
+    document.getElementById('statusArea').innerHTML = `<div class="status-bar ${type}">${spinner ? '<div class="spinner"></div>' : ''} ${msg}</div>`;
+}
+function clearStatus() { document.getElementById('statusArea').innerHTML = ''; }
 
-    // ─── Transcribe ───
-    async function transcribe() {
-        const file = fileInput.files[0];
-        if (!file) return;
+// ═══ TRANSCRIBE ═══
+async function transcribe() {
+    const file = fileInput.files[0]; if (!file) return;
+    const btn = document.getElementById('transcribeBtn');
+    btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> Transcribing...';
+    showStatus('info', 'Uploading and transcribing...', true);
+    const formData = new FormData();
+    formData.append('audio', file);
+    formData.append('call_type', currentCallType);
+    try {
+        const res = await fetch('/api/transcribe', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        currentSessionId = data.session_id; lastTranscriptData = data;
+        const dur = data.duration_seconds || 0;
+        document.getElementById('transcriptStats').innerHTML = `
+            <div class="stat"><div class="stat-label">Duration</div><div class="stat-value">${Math.floor(dur/60)}m ${Math.floor(dur%60)}s</div></div>
+            <div class="stat"><div class="stat-label">Words</div><div class="stat-value">${data.word_count.toLocaleString()}</div></div>`;
+        const box = document.getElementById('transcriptBox');
+        box.innerHTML = data.utterances?.length > 0
+            ? data.utterances.map(u => `<div class="utterance"><div class="speaker-label">Speaker ${u.speaker}</div><div>${u.text}</div></div>`).join('')
+            : `<div>${data.text}</div>`;
+        document.getElementById('transcriptCard').classList.remove('hidden');
+        document.getElementById('promptCard').classList.remove('hidden');
+        document.getElementById('exportCard').classList.remove('hidden');
+        showStatus('success', 'Transcription complete'); setTimeout(clearStatus, 3000);
+    } catch (err) { showStatus('error', err.message); }
+    finally { btn.disabled = false; btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Transcribe'; }
+}
 
-        const btn = document.getElementById('transcribeBtn');
-        btn.disabled = true;
-        btn.textContent = 'Transcribing...';
-        showStatus('info', 'Uploading and transcribing audio... this may take a minute.', true);
+// ═══ ANALYZE ═══
+async function analyze() {
+    const prompt = document.getElementById('analysisPrompt').value.trim();
+    if (!prompt) { showStatus('error', 'Enter an analysis prompt'); return; }
+    if (!currentSessionId) { showStatus('error', 'Transcribe audio first'); return; }
+    const btn = document.getElementById('analyzeBtn');
+    btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> Analyzing...';
+    showStatus('info', 'Running analysis with Claude...', true);
+    try {
+        const model = document.getElementById('modelSelect').value;
+        const res = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session_id: currentSessionId, prompt, model }) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
 
-        const formData = new FormData();
-        formData.append('audio', file);
+        // Build full row (metadata + transcript + ordered attributes)
+        const fullRow = buildFullRow(data.metadata || {}, data.attributes || {});
+        lastFullRow = fullRow;
 
-        try {
-            const res = await fetch('/api/transcribe', { method: 'POST', body: formData });
-            const data = await res.json();
+        // Render full output table
+        const allCols = Object.keys(fullRow);
+        document.getElementById('fullOutputHead').innerHTML = allCols.map(c => `<th>${c}</th>`).join('');
+        document.getElementById('fullOutputBody').innerHTML = allCols.map(c => {
+            const val = String(fullRow[c] || '');
+            const display = val.length > 80 ? val.substring(0,80) + '...' : val;
+            return `<td title="${val.replace(/"/g,'&quot;')}">${display}</td>`;
+        }).join('');
+        document.getElementById('fullOutputCard').classList.remove('hidden');
+        document.getElementById('csvBtn').disabled = false;
 
-            if (!res.ok) throw new Error(data.error);
-
-            currentSessionId = data.session_id;
-            lastTranscriptData = data;
-
-            // Show stats
-            const statsEl = document.getElementById('transcriptStats');
-            const dur = data.duration_seconds || 0;
-            const mins = Math.floor(dur / 60);
-            const secs = Math.floor(dur % 60);
-            statsEl.innerHTML = `
-                <div class="stat">
-                    <div class="stat-label">Duration</div>
-                    <div class="stat-value">${mins}m ${secs}s</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-label">Words</div>
-                    <div class="stat-value">${data.word_count.toLocaleString()}</div>
-                </div>
-            `;
-
-            // Show transcript
-            const box = document.getElementById('transcriptBox');
-            if (data.utterances && data.utterances.length > 0) {
-                box.innerHTML = data.utterances.map(u => `
-                    <div class="utterance">
-                        <div class="speaker-label">Speaker ${u.speaker}</div>
-                        <div>${u.text}</div>
-                    </div>
-                `).join('');
-            } else {
-                box.textContent = data.text;
-            }
-
-            document.getElementById('transcriptCard').classList.remove('hidden');
-            document.getElementById('promptCard').classList.remove('hidden');
-            document.getElementById('exportCard').classList.remove('hidden');
-
-            showStatus('success', 'Transcription complete!');
-            setTimeout(clearStatus, 3000);
-
-        } catch (err) {
-            showStatus('error', `Error: ${err.message}`);
-        } finally {
-            btn.disabled = false;
-            btn.textContent = 'Transcribe Audio';
-        }
-    }
-
-    // ─── Analyze ───
-    async function analyze() {
-        const prompt = document.getElementById('analysisPrompt').value.trim();
-        if (!prompt) { showStatus('error', 'Please enter an analysis prompt.'); return; }
-        if (!currentSessionId) { showStatus('error', 'Transcribe audio first.'); return; }
-
-        const btn = document.getElementById('analyzeBtn');
-        btn.disabled = true;
-        btn.textContent = 'Analyzing...';
-        showStatus('info', 'Running analysis with Claude...', true);
-
-        try {
-            const model = document.getElementById('modelSelect').value;
-            const res = await fetch('/api/analyze', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    session_id: currentSessionId,
-                    prompt: prompt,
-                    model: model,
-                }),
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error);
-
-            // Show summary
-            const summaryEl = document.getElementById('summaryBox');
-            const summarySection = document.getElementById('summarySection');
-            if (data.summary) {
-                summaryEl.textContent = data.summary;
-                summarySection.classList.remove('hidden');
-            }
-
-            // Show attributes table
-            const attrsSection = document.getElementById('attrsSection');
-            const tbody = document.getElementById('attrsBody');
-            tbody.innerHTML = '';
-            if (data.attributes && Object.keys(data.attributes).length > 0) {
-                lastAttributesData = data.attributes;
-                for (const [key, val] of Object.entries(data.attributes)) {
-                    tbody.innerHTML += `<tr><td>${key}</td><td>${val}</td></tr>`;
-                }
-                attrsSection.classList.remove('hidden');
-                document.getElementById('csvBtn').disabled = false;
-            }
-
+        // Summary
+        if (data.summary) {
+            document.getElementById('summaryBox').textContent = data.summary;
             document.getElementById('analysisCard').classList.remove('hidden');
-
-            if (data.note) {
-                showStatus('warning', data.note);
-            } else {
-                showStatus('success', 'Analysis complete!');
-                setTimeout(clearStatus, 3000);
-            }
-
-        } catch (err) {
-            showStatus('error', `Error: ${err.message}`);
-        } finally {
-            btn.disabled = false;
-            btn.textContent = 'Run Analysis';
         }
-    }
 
-    // ─── Export Helpers ───
-    async function exportDocx() {
-        if (!currentSessionId) return;
-        try {
-            const res = await fetch('/api/export/docx', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ session_id: currentSessionId }),
-            });
-            if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
-            const blob = await res.blob();
-            downloadBlob(blob, 'transcript.docx');
-        } catch (err) {
-            showStatus('error', `Export error: ${err.message}`);
-        }
-    }
+        showStatus('success', 'Analysis complete'); setTimeout(clearStatus, 3000);
+    } catch (err) { showStatus('error', err.message); }
+    finally { btn.disabled = false; btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Analyze'; }
+}
 
-    async function exportCsv() {
-        if (!currentSessionId) return;
-        try {
-            const res = await fetch('/api/export/csv', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ session_id: currentSessionId }),
-            });
-            if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
-            const blob = await res.blob();
-            downloadBlob(blob, 'analysis.csv');
-        } catch (err) {
-            showStatus('error', `Export error: ${err.message}`);
-        }
-    }
+// ═══ EXPORTS ═══
+async function exportDocx() {
+    if (!currentSessionId) return;
+    try {
+        const res = await fetch('/api/export/docx', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: currentSessionId }) });
+        if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+        downloadBlob(await res.blob(), 'transcript.docx');
+    } catch (err) { showStatus('error', err.message); }
+}
+async function exportCsv() {
+    if (!currentSessionId) return;
+    try {
+        const res = await fetch('/api/export/csv', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: currentSessionId }) });
+        if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+        downloadBlob(await res.blob(), 'analysis.csv');
+    } catch (err) { showStatus('error', err.message); }
+}
+function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob); const a = document.createElement('a');
+    a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+}
 
-    function downloadBlob(blob, filename) {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-    }
-
-    // ─── Initialize prompt on page load ───
-    document.getElementById('analysisPrompt').value = getSavedPrompt('inbound');
+// ═══ INIT ═══
+document.getElementById('analysisPrompt').value = getSavedPrompt('inbound');
 </script>
 </body>
 </html>
