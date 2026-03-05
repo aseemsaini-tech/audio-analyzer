@@ -90,6 +90,9 @@ def transcribe():
     if audio_file.filename == "":
         return jsonify({"error": "No file selected"}), 400
 
+    # Get call type from form data
+    call_type = request.form.get("call_type", "inbound")
+
     # Save uploaded file
     filename = f"{int(time.time())}_{audio_file.filename}"
     filepath = UPLOAD_DIR / filename
@@ -125,6 +128,7 @@ def transcribe():
         session_id = filename.split(".")[0]
         save_session(session_id, {
             "filename": audio_file.filename,
+            "call_type": call_type,
             "full_text": full_text,
             "utterances": utterances,
             "duration_seconds": (transcript.audio_duration or 0),
@@ -217,6 +221,14 @@ Respond with JSON containing "summary" and "attributes" keys."""
         return jsonify({
             "summary": summary,
             "attributes": attributes,
+            "metadata": {
+                "filename": session["filename"],
+                "call_type": session.get("call_type", "inbound"),
+                "duration_seconds": session.get("duration_seconds", 0),
+                "word_count": len(session["full_text"].split()),
+                "date": session["timestamp"][:10],
+                "transcript": session["full_text"],
+            },
         })
 
     except json.JSONDecodeError:
@@ -372,18 +384,29 @@ def export_csv():
 
 @app.route("/api/sessions", methods=["GET"])
 def list_sessions():
-    """List active sessions."""
+    """List all sessions with full data for history view."""
     sessions = []
     for path in SESSION_DIR.glob("*.json"):
         sid = path.stem
         data = load_session(sid)
         if data:
-            sessions.append({
+            analysis = data.get("analysis", {})
+            duration = data.get("duration_seconds", 0)
+            entry = {
                 "session_id": sid,
                 "filename": data["filename"],
+                "call_type": data.get("call_type", "inbound"),
                 "timestamp": data["timestamp"],
-                "has_analysis": "analysis" in data,
-            })
+                "duration_seconds": duration,
+                "word_count": len(data.get("full_text", "").split()),
+                "full_text": data.get("full_text", ""),
+                "has_analysis": bool(analysis),
+                "attributes": analysis.get("attributes", {}),
+                "summary": analysis.get("summary", ""),
+            }
+            sessions.append(entry)
+    # Sort by timestamp descending (most recent first)
+    sessions.sort(key=lambda x: x["timestamp"], reverse=True)
     return jsonify(sessions)
 
 
